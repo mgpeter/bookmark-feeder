@@ -41,6 +41,8 @@ This project is a self-hosted bookmark management platform intended to replace s
 ### 1. **Chrome Extension**
 
 - Reads browser bookmarks via the `chrome.bookmarks` API
+- Allows configuration of which browser bookmark folders are of interest and later synced to the backend
+- Displays a list of all bookmarks from the selected folders in the user's browser
 - Allows configuration of backend server address
 - UI to select specific bookmark folders (e.g. "Research", "Tools")
 - Sends selected bookmarks to backend via REST API

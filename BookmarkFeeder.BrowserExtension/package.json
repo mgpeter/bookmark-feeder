@@ -1,0 +1,13 @@
+{
+  "name": "bookmarkfeeder-extension",
+  "version": "1.0.0",
+  "description": "Chrome/Edge extension for BookmarkFeeder",
+  "scripts": {
+    "build:css": "npx @tailwindcss/cli -i ./css/tailwind.css -o ./css/tailwind.generated.css",
+    "watch:css": "npx @tailwindcss/cli -i ./css/tailwind.css -o ./css/tailwind.generated.css --watch"
+  },
+  "dependencies": {
+    "@tailwindcss/cli": "^4.0.17",
+    "tailwindcss": "^4.0.17"
+  }
+}

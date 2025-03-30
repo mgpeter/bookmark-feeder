@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+/* Custom styles */
+body {
+    width: 384px; /* w-96 equivalent */
+    padding: 1rem; /* p-4 equivalent */
+    background-color: rgb(249 250 251); /* bg-gray-50 equivalent */
+}
+
+.space-y-4 > * + * {
+    margin-top: 1rem;
+}
+
+.space-y-2 > * + * {
+    margin-top: 0.5rem;
+}
+
+.space-x-2 > * + * {
+    margin-left: 0.5rem;
+}
+
+/* Text styles */
+.text-xl {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+.font-bold {
+    font-weight: 700;
+}
+
+.font-medium {
+    font-weight: 500;
+}
+
+/* Colors */
+.text-gray-900 {
+    color: rgb(17 24 39);
+}
+
+.text-gray-700 {
+    color: rgb(55 65 81);
+}
+
+.text-gray-600 {
+    color: rgb(75 85 99);
+}
+
+.text-gray-500 {
+    color: rgb(107 114 128);
+}
+
+.text-red-500 {
+    color: rgb(239 68 68);
+}
+
+.text-red-700:hover {
+    color: rgb(185 28 28);
+}
+
+.text-white {
+    color: white;
+}
+
+.bg-white {
+    background-color: white;
+}
+
+.bg-blue-600 {
+    background-color: rgb(37 99 235);
+}
+
+.bg-blue-700:hover {
+    background-color: rgb(29 78 216);
+}
+
+.bg-green-600 {
+    background-color: rgb(22 163 74);
+}
+
+.bg-green-700:hover {
+    background-color: rgb(21 128 61);
+}
+
+/* Layout */
+.flex {
+    display: flex;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.justify-end {
+    justify-content: flex-end;
+}
+
+.fixed {
+    position: fixed;
+}
+
+.inset-0 {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.w-80 {
+    width: 20rem;
+}
+
+.w-6 {
+    width: 1.5rem;
+}
+
+.h-6 {
+    height: 1.5rem;
+}
+
+/* Spacing */
+.p-4 {
+    padding: 1rem;
+}
+
+.p-2 {
+    padding: 0.5rem;
+}
+
+.px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.py-2 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.mb-4 {
+    margin-bottom: 1rem;
+}
+
+/* Borders */
+.rounded-md {
+    border-radius: 0.375rem;
+}
+
+.rounded-lg {
+    border-radius: 0.5rem;
+}
+
+.border {
+    border-width: 1px;
+}
+
+.border-transparent {
+    border-color: transparent;
+}
+
+/* Effects */
+.shadow-sm {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+.shadow-lg {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+/* Background opacity */
+.bg-opacity-50 {
+    --tw-bg-opacity: 0.5;
+}
+
+.bg-black {
+    background-color: rgb(0 0 0);
+} 
