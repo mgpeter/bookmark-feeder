@@ -1,0 +1,118 @@
+---
+description: Frontend UI Rules
+globs: **/*.{razor,css,js,cs}
+---
+# Frontend UI Rules
+
+Rules for maintaining Blazor frontend standards.
+
+<rule>
+name: frontend_ui
+description: Enforces Blazor component and UI standards for .NET 9
+filters:
+  - type: file_extension
+    pattern: "\\.(razor|css|js)$"
+  - type: content
+    pattern: "@page|@component|@inject|@code"
+  - type: event
+    pattern: "file_create|file_modify"
+
+actions:
+  - type: reject
+    conditions:
+      - pattern: "@inject \\w+ \\w+"
+        message: "Use constructor injection for components in .NET 9"
+      - pattern: "StateHasChanged\\(\\)"
+        message: "Use proper state management instead of direct calls"
+      - pattern: "JSRuntime\\.InvokeAsync"
+        message: "Use IJSRuntime through proper service abstraction"
+      - pattern: "@rendermode"
+        message: "Do not use component-level render modes. Rendering strategy is configured globally in Program.cs"
+
+  - type: suggest
+    message: |
+      Frontend UI Standards for .NET 9 Blazor:
+
+      1. Rendering Strategy:
+         - Global interactive server rendering configured in Program.cs
+         - No component-level @rendermode directives
+         - Components inherit global rendering behavior
+         - Example:
+           ```razor
+           @page "/counter"
+           
+           <h1>Counter</h1>
+           ```
+
+      2. Component Organization:
+         ```
+         WebApp/
+         ├── Components/
+         │   ├── Layout/              # Layout components
+         │   ├── Shared/              # Reusable components
+         │   └── Features/            # Feature-specific components
+         ├── Pages/                   # Page components
+         └── Services/                # Frontend services
+         ```
+
+      3. Component Standards:
+         - Use constructor injection (new in .NET 9)
+         - Implement IDisposable when needed
+         - Use proper lifecycle methods
+         - Follow single responsibility
+         - Use proper parameter binding
+
+      4. State Management:
+         - Use proper state containers
+         - Implement proper event handling
+         - Use cascading parameters when appropriate
+         - Handle component disposal
+         - Use new state persistence APIs for enhanced navigation
+         - Properly handle prerender to interactive state
+
+      5. Performance:
+         - Leverage global rendering configuration
+         - Use proper caching strategies
+         - Implement proper error boundaries
+         - Use WebSocket compression for Server mode
+         - Leverage static asset optimization
+
+      6. Authentication:
+         - Use Microsoft Identity Platform for auth
+         - Handle auth state properly with global rendering
+         - Implement proper auth state persistence
+
+examples:
+  - input: |
+      // Bad: Using component-level render mode
+      @page "/counter"
+      @rendermode InteractiveServer
+      
+      // Good: Using global render mode
+      @page "/counter"
+      
+      public class Counter
+      {
+          private readonly ILogger<Counter> _logger;
+          
+          // Good: Constructor injection
+          public Counter(ILogger<Counter> logger)
+          {
+              _logger = logger;
+          }
+      }
+    output: "Correctly implemented .NET 9 component"
+
+  - input: |
+      // Bad: Old state management
+      @code {
+          private void UpdateState() {
+              StateHasChanged();
+          }
+      }
+    output: "Incorrect state management"
+
+metadata:
+  priority: high
+  version: 1.0
+</rule> 

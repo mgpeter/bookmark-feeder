@@ -1,0 +1,256 @@
+---
+description: Frontend Angular UI Rules
+globs: *.ts,*.js,*.css,*.scss,*.json,*.tsx,*.html
+---
+# Angular UI Development Rules
+
+Rules for maintaining consistent Angular development practices.
+
+## Component Structure
+
+1. **Template and Component Separation**
+   - Use separate files for component templates (`.html`) and logic (`.ts`)
+   - Exception: Very simple components with templates less than 5 lines can use inline templates
+   - Benefits:
+     - Better organization for complex components
+     - Improved HTML syntax highlighting and formatting
+     - Easier collaboration with designers
+     - Better maintainability
+
+2. **Component Organization**
+   - Group related components in feature folders
+   - Use the `standalone: true` pattern for components
+   - Keep components focused and single-responsibility
+   - Use shared components for reusable UI elements
+
+3. **Styling**
+   - Use Tailwind CSS v4 for styling
+   - Maintain dark mode support with `dark:` variants
+   - Use CSS custom properties for theme values
+   - Keep component-specific styles in the component's directory
+
+## Best Practices
+
+1. **State Management**
+   - Use Angular services for state management
+   - Leverage RxJS for reactive state updates
+   - Keep component state minimal and derived from services
+   - Use `async` pipe when possible
+
+2. **Performance**
+   - Use `trackBy` functions for `*ngFor` loops
+   - Implement `OnPush` change detection when beneficial
+   - Lazy load feature modules and components
+   - Use pure pipes for computed values
+
+3. **Accessibility**
+   - Include ARIA labels and roles
+   - Ensure keyboard navigation support
+   - Maintain proper heading hierarchy
+   - Support screen readers
+
+4. **Error Handling**
+   - Implement proper error boundaries
+   - Show user-friendly error messages
+   - Log errors appropriately
+   - Provide fallback UI states
+
+## Code Style
+
+1. **Naming Conventions**
+   - Use kebab-case for file names
+   - Use PascalCase for component names
+   - Use camelCase for properties and methods
+   - Prefix services with appropriate domain
+
+2. **File Structure**
+   ```
+   feature/
+   ├── components/
+   │   ├── feature.component.ts
+   │   ├── feature.component.html
+   │   └── feature.component.spec.ts
+   ├── services/
+   │   └── feature.service.ts
+   └── models/
+       └── feature.model.ts
+   ```
+
+3. **Import Order**
+   - Angular core imports
+   - Angular feature imports
+   - Third-party imports
+   - Application imports
+   - Relative imports
+
+## Testing
+
+1. **Unit Tests**
+   - Write unit tests for components and services
+   - Use TestBed for Angular-specific testing
+   - Mock dependencies appropriately
+   - Test both success and error cases
+
+2. **E2E Tests**
+   - Write E2E tests for critical user paths
+   - Test responsive behavior
+   - Include accessibility tests
+   - Test dark mode functionality
+
+<rule>
+name: frontend_angular_ui
+description: Enforces Angular development standards and best practices
+filters:
+  - type: directory
+    pattern: "**"
+  - type: file_extension
+    pattern: "\\.ts$|\\.html$|\\.scss$|\\.css$"
+
+actions:
+  - type: suggest
+    message: |
+      Angular Development Standards:
+
+      1. Project Structure:
+         - Feature-based module organization
+         - Lazy loading for feature modules
+         - Shared module for common components
+         - Core module for singleton services
+         Example:
+         ```
+         src/
+         ├── app/
+         │   ├── core/           # Singleton services, guards
+         │   ├── shared/         # Shared components, pipes, directives
+         │   ├── features/       # Feature modules
+         │   │   ├── auth/       # Authentication feature module
+         │   │   ├── dashboard/  # Dashboard feature module
+         │   │   └── settings/   # Settings feature module
+         │   ├── assets/
+         │   └── environments/
+         ```
+
+      2. Component Guidelines:
+         - Use OnPush change detection strategy
+         - Implement lifecycle hooks interfaces
+         - Keep components focused and small
+         - Use smart/dumb component pattern
+         Example:
+         ```typescript
+         @Component({
+           selector: 'app-user-profile',
+           changeDetection: ChangeDetectionStrategy.OnPush
+         })
+         export class UserProfileComponent implements OnInit, OnDestroy {
+           @Input() userId: string;
+           @Output() profileUpdate = new EventEmitter<UserProfile>();
+         }
+         ```
+
+      3. State Management:
+         - Use NgRx for complex state
+         - Follow Redux patterns
+         - Keep state immutable
+         - Use selectors for data access
+         Example:
+         ```typescript
+         export const selectUserState = createFeatureSelector<UserState>('user');
+         export const selectIsAuthenticated = createSelector(
+           selectUserState,
+           state => state.isAuthenticated
+         );
+         ```
+
+      4. Styling Standards:
+         - Use Tailwind CSS v4 for styling
+         - BEM naming convention
+         - Component-scoped styles
+         - Shared tailwind variables for theming
+
+      5. Performance Guidelines:
+         - Use trackBy for *ngFor
+         - Lazy load images and modules
+         - Implement virtual scrolling for long lists
+         - Use pure pipes for transformations
+         Example:
+         ```typescript
+         <div *ngFor="let user of users; trackBy: trackByFn">
+         
+         trackByFn(index: number, item: User): string {
+           return item.id;
+         }
+         ```
+
+      6. Testing Requirements:
+         - Unit tests for services and components
+         - E2E tests for critical paths
+         - Test coverage minimum 80%
+         Example:
+         ```typescript
+         describe('UserService', () => {
+           it('should handle user authentication', () => {
+             // Test implementation
+           });
+         });
+         ```
+
+      7. Error Handling:
+         - Global error handler
+         - Proper error boundaries
+         - User-friendly error messages
+         Example:
+         ```typescript
+         @Injectable()
+         export class GlobalErrorHandler implements ErrorHandler {
+           handleError(error: Error) {
+             // Error handling logic
+           }
+         }
+         ```
+
+      8. Accessibility:
+         - ARIA labels and roles
+         - Keyboard navigation
+         - High contrast support
+         - Screen reader compatibility
+         Example:
+         ```html
+         <button 
+           aria-label="Update profile"
+           (click)="updateProfile()"
+           [attr.disabled]="!isFormValid">
+           Update
+         </button>
+         ```
+
+examples:
+  - input: |
+      // Bad component structure
+      @Component({
+        selector: 'app-user',
+        template: `<div>{{data}}</div>`
+      })
+      export class UserComponent {
+        data: any;
+      }
+    output: |
+      // Good component structure
+      @Component({
+        selector: 'app-user',
+        templateUrl: './user.component.html',
+        styleUrls: ['./user.component.css'],
+        changeDetection: ChangeDetectionStrategy.OnPush
+      })
+      export class UserComponent implements OnInit, OnDestroy {
+        @Input() config: UserConfig;
+        @Output() userUpdate = new EventEmitter<User>();
+        
+        ngOnInit(): void {
+          // Initialization logic
+        }
+      }
+
+metadata:
+  priority: high
+  version: 1.0
+</rule> 
