@@ -106,15 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function createFolderElement(folder) {
         const div = document.createElement('div');
-        div.className = 'flex items-center justify-between p-2 bg-white rounded-md shadow-sm';
+        div.className = 'flex items-center justify-between p-2 bg-slate-800 rounded-md shadow-sm border border-slate-700';
         
         const nameSpan = document.createElement('span');
         nameSpan.textContent = folder.title;
-        nameSpan.className = 'text-sm text-gray-700';
+        nameSpan.className = 'text-sm text-slate-200';
         
         const removeBtn = document.createElement('button');
         removeBtn.innerHTML = '&times;';
-        removeBtn.className = 'text-red-500 hover:text-red-700 font-bold';
+        removeBtn.className = 'text-fuchsia-400 hover:text-fuchsia-300 font-bold transition-colors';
         removeBtn.addEventListener('click', () => removeFolder(folder.id));
         
         div.appendChild(nameSpan);
@@ -132,29 +132,50 @@ document.addEventListener('DOMContentLoaded', () => {
         // Simple folder selection UI
         const folders = await getFolderList(root);
         const options = folders.map(f => 
-            `<option value="${f.id}">${'—'.repeat(f.depth)} ${f.title}</option>`
+            `<option value="${f.id}" class="bg-slate-700">${'—'.repeat(f.depth)} ${f.title}</option>`
         ).join('');
 
         const modal = document.createElement('div');
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
+        modal.className = 'fixed inset-0 bg-slate-900/75 flex items-center justify-center backdrop-blur-sm';
         modal.innerHTML = `
-            <div class="bg-white p-4 rounded-lg shadow-lg w-80">
-                <h3 class="text-lg font-medium mb-4">Select Folder</h3>
-                <select class="w-full p-2 border rounded mb-4">
+            <div class="bg-slate-800 p-4 rounded-lg shadow-lg w-80 space-y-4 border border-slate-700">
+                <h3 class="text-lg font-medium text-white">Select Folder</h3>
+                <select class="w-full p-2 bg-slate-700 border border-slate-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-fuchsia-500 appearance-none">
+                    <option value="" disabled selected class="bg-slate-700">Select a folder...</option>
                     ${options}
                 </select>
                 <div class="flex justify-end space-x-2">
-                    <button class="px-4 py-2 text-gray-600 hover:text-gray-800" id="cancelSelect">Cancel</button>
-                    <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" id="confirmSelect">Add</button>
+                    <button class="px-4 py-2 text-slate-300 hover:text-white transition-colors" id="cancelSelect">Cancel</button>
+                    <button class="px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-500 text-white rounded-md transition-colors" id="confirmSelect">Add</button>
                 </div>
             </div>
         `;
 
+        // Add custom styles to fix dropdown appearance
+        const style = document.createElement('style');
+        style.textContent = `
+            select option {
+                background-color: rgb(51 65 85); /* bg-slate-700 */
+                color: white;
+                padding: 8px;
+            }
+            select:focus option:checked {
+                background: linear-gradient(0deg, rgb(217 70 239), rgb(217 70 239)); /* bg-fuchsia-500 */
+            }
+        `;
+        document.head.appendChild(style);
+
         document.body.appendChild(modal);
 
         const select = modal.querySelector('select');
-        modal.querySelector('#cancelSelect').onclick = () => modal.remove();
+        modal.querySelector('#cancelSelect').onclick = () => {
+            modal.remove();
+            style.remove();
+        };
         modal.querySelector('#confirmSelect').onclick = () => {
+            if (!select.value) {
+                return; // Don't do anything if no folder is selected
+            }
             const folder = folders.find(f => f.id === select.value);
             if (folder && !selectedFolders.find(f => f.id === folder.id)) {
                 selectedFolders.push(folder);
@@ -162,6 +183,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderSelectedFolders();
             }
             modal.remove();
+            style.remove();
         };
     }
 

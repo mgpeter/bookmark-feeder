@@ -10,8 +10,8 @@
 <body>
     <div class="space-y-4">
         <div class="flex items-center justify-between">
-            <h1 class="text-xl font-bold text-gray-900">BookmarkFeeder</h1>
-            <button id="settingsBtn" aria-label="Settings" class="text-gray-600 hover:text-gray-900">
+            <h1 class="text-xl font-bold text-white">BookmarkFeeder</h1>
+            <button id="settingsBtn" aria-label="Settings" class="text-slate-300 hover:text-white">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -21,21 +21,21 @@
 
         <div id="mainContent">
             <div id="folderSelection" class="space-y-2">
-                <h2 class="text-sm font-medium text-gray-700">Selected Folders</h2>
+                <h2 class="text-sm font-medium text-slate-300">Selected Folders</h2>
                 <div id="selectedFolders" class="space-y-2">
                     <!-- Folders will be populated here -->
                 </div>
-                <button id="addFolderBtn" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                <button id="addFolderBtn" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-fuchsia-600 hover:bg-fuchsia-500 transition-colors">
                     Add Folder
                 </button>
             </div>
 
             <div id="syncSection" class="space-y-2 mt-4">
                 <div class="flex items-center justify-between">
-                    <h2 class="text-sm font-medium text-gray-700">Sync Status</h2>
-                    <span id="lastSyncTime" class="text-xs text-gray-500">Never synced</span>
+                    <h2 class="text-sm font-medium text-slate-300">Sync Status</h2>
+                    <span id="lastSyncTime" class="text-xs text-slate-400">Never synced</span>
                 </div>
-                <button id="syncNowBtn" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+                <button id="syncNowBtn" class="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-500 transition-colors">
                     Sync Now
                 </button>
             </div>
@@ -43,8 +43,8 @@
 
         <div id="settingsContent" class="hidden space-y-4">
             <div class="flex items-center justify-between mb-4">
-                <h2 class="text-lg font-medium text-gray-900">Settings</h2>
-                <button id="closeSettingsBtn" aria-label="Close Settings" class="text-gray-600 hover:text-gray-900">
+                <h2 class="text-lg font-medium text-white">Settings</h2>
+                <button id="closeSettingsBtn" aria-label="Close Settings" class="text-slate-300 hover:text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
@@ -52,19 +52,19 @@
             </div>
 
             <div class="space-y-2">
-                <label for="serverUrl" class="block text-sm font-medium text-gray-700">
+                <label for="serverUrl" class="block text-sm font-medium text-slate-300">
                     Server URL
                 </label>
                 <input type="url" id="serverUrl" 
-                    class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    class="block w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md shadow-sm text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     placeholder="https://your-server.com/api">
-                <p class="mt-1 text-xs text-gray-500">
+                <p class="mt-1 text-xs text-slate-400">
                     Enter the URL of your BookmarkFeeder backend server
                 </p>
             </div>
 
             <div class="flex justify-end space-x-2 pt-4">
-                <button id="saveSettingsBtn" class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                <button id="saveSettingsBtn" class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-fuchsia-600 hover:bg-fuchsia-500 transition-colors">
                     Save Settings
                 </button>
             </div>
