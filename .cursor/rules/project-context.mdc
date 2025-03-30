@@ -1,0 +1,126 @@
+---
+description: Project Context Documentation Rules
+globs: 
+  - "./docs/CONTEXT.md"
+  - "**/*"
+alwaysApply: true
+---
+# Project Context Documentation Rules
+
+Rules for maintaining and following project context and requirements documentation.
+
+<rule>
+name: project_context
+description: Enforces the use and adherence to project context documentation
+filters:
+  - type: file_path
+    pattern: "docs/CONTEXT\\.md$"
+  - type: event
+    pattern: "file_create|file_modify|file_read"
+
+actions:
+  - type: reject
+    conditions:
+      - pattern: "^\\s*$"
+        message: "CONTEXT.md must not be empty"
+      - pattern: "^(?!#\\s+Project\\sContext)"
+        message: "CONTEXT.md must start with a '# Project Context' heading"
+
+  - type: suggest
+    message: |
+      Project Context Documentation Standards:
+
+      1. Location and Purpose:
+         ```
+         docs/
+         └── CONTEXT.md  # High-level project requirements and context
+         ```
+         - Contains authoritative project requirements
+         - Serves as the single source of truth for project direction
+         - Must be consulted before making architectural decisions
+         - Changes require explicit user agreement
+
+      2. Document Structure:
+         ```markdown
+         # Project Context
+
+         ## Overview
+         Brief description of the project's purpose and goals.
+
+         ## Requirements
+         Clear, numbered list of project requirements.
+
+         ## Constraints
+         Technical or business constraints that must be considered.
+
+         ## Assumptions
+         Documented assumptions about the project context.
+
+         ## Change Log
+         Record of requirement changes and approvals.
+         ```
+
+      3. Usage Guidelines:
+         - All technical decisions must align with CONTEXT.md
+         - Proposed changes must be discussed with the user
+         - Document should be reviewed before major features
+         - Conflicts with requirements need explicit resolution
+         - Regular validation against implementation
+
+      4. Change Process:
+         - Identify requirement change need
+         - Discuss with user
+         - Document agreement
+         - Update CONTEXT.md
+         - Update change log section
+
+      5. Related Documentation:
+         - Reference architecture documents
+         - Technical specifications
+         - API documentation
+         - Integration guides
+
+examples:
+  - input: |
+      # Project Context
+
+      ## Overview
+      This project implements a bookmark feed aggregator.
+
+      ## Requirements
+      1. Aggregate bookmarks from multiple sources
+      2. Provide unified feed interface
+      3. Support real-time updates
+      4. Maintain source attribution
+
+      ## Constraints
+      - Must work with existing bookmark platforms
+      - Performance requirements for feed updates
+      - Security requirements for API access
+
+      ## Assumptions
+      - Users have accounts on supported platforms
+      - Platforms provide stable APIs
+      - Network connectivity is reliable
+
+      ## Change Log
+      - 2024-03-30: Initial requirements documented
+    output: "Correctly formatted project context document"
+
+  - input: |
+      Just some random notes about the project...
+    output: "Incorrect: Missing proper structure and headings"
+
+metadata:
+  priority: high
+  version: 1.0
+  tags:
+    - documentation
+    - requirements
+    - project-management
+
+## Related Rules
+- solution-structure.mdc: For implementing features according to requirements
+- api-integration.mdc: For implementing API features according to requirements
+- frontend-ui.mdc: For implementing UI according to requirements
+</rule> 
