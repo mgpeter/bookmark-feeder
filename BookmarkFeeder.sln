@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookmarkFeeder.AppHost", "B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookmarkFeeder.ServiceDefaults", "BookmarkFeeder.ServiceDefaults\BookmarkFeeder.ServiceDefaults.csproj", "{C0F18072-B019-4D76-9FD8-5F3EBA8B225D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookmarkFeeder.WebApi", "BookmarkFeeder.WebApi\BookmarkFeeder.WebApi.csproj", "{B742DB20-DBDD-4706-AA58-160B819D55DB}"
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -23,6 +25,10 @@ Global
 		{C0F18072-B019-4D76-9FD8-5F3EBA8B225D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C0F18072-B019-4D76-9FD8-5F3EBA8B225D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C0F18072-B019-4D76-9FD8-5F3EBA8B225D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B742DB20-DBDD-4706-AA58-160B819D55DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B742DB20-DBDD-4706-AA58-160B819D55DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B742DB20-DBDD-4706-AA58-160B819D55DB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B742DB20-DBDD-4706-AA58-160B819D55DB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

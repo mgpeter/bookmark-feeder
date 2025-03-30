@@ -1,0 +1,6 @@
+@BookmarkFeeder.WebApi_HostAddress = http://localhost:5150
+
+GET {{BookmarkFeeder.WebApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
