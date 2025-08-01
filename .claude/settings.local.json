@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(del .agent-osspecs.date-check)",
+      "Bash(rm:*)",
+      "Bash(dotnet new:*)",
+      "Bash(del \"C:\\repos\\bookmark-feeder\\BookmarkFeeder.Data.Tests\\Class1.cs\")",
+      "Bash(dotnet sln add:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}

@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Implement foundational API endpoints for bookmark management with complete backend initialization and PostgreSQL setup using EF Core code-first migrations. Establishes core data layer and API infrastructure for MVP with containerized PostgreSQL via Aspire for development. Delivers functional CRUD endpoints for bookmarks and tags with proper database relationships and automatic migration support.
