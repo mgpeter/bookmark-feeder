@@ -22,13 +22,11 @@
   - [ ] 2.7 Test complete Aspire startup with database container
   - [ ] 2.8 Verify all database integration tests pass
 
-- [ ] 3. Data Transfer Objects and AutoMapper Configuration
+- [ ] 3. Data Transfer Objects and mapping configuration
   - [ ] 3.1 Write tests for DTO validation and mapping scenarios
   - [ ] 3.2 Create BookmarkCreateDto, BookmarkUpdateDto, BookmarkResponseDto
   - [ ] 3.3 Create TagCreateDto, TagUpdateDto, TagResponseDto  
-  - [ ] 3.4 Add AutoMapper NuGet package to WebApi project
-  - [ ] 3.5 Create AutoMapper profiles for entity-to-DTO mappings
-  - [ ] 3.6 Configure AutoMapper in Program.cs dependency injection
+  - [ ] 3.4 Implement Converter classes (static extension ToDto() methods) for manual mapping from entities to DTOs
   - [ ] 3.7 Implement tag name normalization in mapping profiles
   - [ ] 3.8 Verify all DTO and mapping tests pass
 
