@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using BookmarkFeeder.Data.Configuration;
+using BookmarkFeeder.Data.Models;
 
 namespace BookmarkFeeder.Data.Context;
 
@@ -32,6 +33,11 @@ public class BookmarkFeederDbContext : DbContext
   {
     _databaseOptions = new DatabaseOptions();
   }
+
+  // Entity DbSets
+  public DbSet<Bookmark> Bookmarks => Set<Bookmark>();
+  public DbSet<Tag> Tags => Set<Tag>();
+  public DbSet<BookmarkTag> BookmarkTags => Set<BookmarkTag>();
 
   /// <summary>
   /// Configures the database context options.

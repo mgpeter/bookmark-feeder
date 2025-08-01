@@ -2,15 +2,15 @@
 
 ## Tasks
 
-- [ ] 1. Database Entity Models and Configuration
-  - [ ] 1.1 Write unit tests for entity models (Bookmark, Tag, BookmarkTag)
-  - [ ] 1.2 Create Bookmark entity with validation attributes and navigation properties
-  - [ ] 1.3 Create Tag entity with name normalization and validation
-  - [ ] 1.4 Create BookmarkTag join entity for many-to-many relationship
-  - [ ] 1.5 Implement entity configuration classes using IEntityTypeConfiguration
-  - [ ] 1.6 Configure fluent API mappings, indexes, and constraints
-  - [ ] 1.7 Update DbContext with DbSets and OnModelCreating configuration
-  - [ ] 1.8 Verify all entity tests pass
+- [x] 1. Database Entity Models and Configuration
+  - [x] 1.1 Write unit tests for entity models (Bookmark, Tag, BookmarkTag)
+  - [x] 1.2 Create Bookmark entity with validation attributes and navigation properties
+  - [x] 1.3 Create Tag entity with name normalization and validation
+  - [x] 1.4 Create BookmarkTag join entity for many-to-many relationship
+  - [x] 1.5 Implement entity configuration classes using IEntityTypeConfiguration
+  - [x] 1.6 Configure fluent API mappings, indexes, and constraints
+  - [x] 1.7 Update DbContext with DbSets and OnModelCreating configuration
+  - [x] 1.8 Verify all entity tests pass
 
 - [ ] 2. Database Migrations and Aspire Integration  
   - [ ] 2.1 Write integration tests for database connectivity and migrations
