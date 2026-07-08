@@ -10,12 +10,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const mainContent = document.getElementById('mainContent');
     const settingsContent = document.getElementById('settingsContent');
     const serverUrlInput = document.getElementById('serverUrl');
+    const apiKeyInput = document.getElementById('apiKey');
 
     // State
     let selectedFolders = [];
 
     // Load saved settings
-    chrome.storage.sync.get(['selectedFolders', 'lastSync', 'serverUrl'], (result) => {
+    chrome.storage.sync.get(['selectedFolders', 'lastSync', 'serverUrl', 'apiKey'], (result) => {
         if (result.selectedFolders) {
             selectedFolders = result.selectedFolders;
             renderSelectedFolders();
@@ -25,6 +26,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (result.serverUrl) {
             serverUrlInput.value = result.serverUrl;
+        }
+        if (result.apiKey) {
+            apiKeyInput.value = result.apiKey;
         }
     });
 
@@ -38,13 +42,14 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             syncNowBtn.disabled = true;
             syncNowBtn.textContent = 'Syncing...';
-            await syncBookmarks();
-            updateLastSyncTime(new Date());
-            syncNowBtn.textContent = 'Sync Complete!';
+            const summary = await syncBookmarks();
+            syncNowBtn.textContent = summary
+                ? `Synced ${summary.created} new, ${summary.skipped} skipped`
+                : 'Sync Complete!';
             setTimeout(() => {
                 syncNowBtn.textContent = 'Sync Now';
                 syncNowBtn.disabled = false;
-            }, 2000);
+            }, 2500);
         } catch (error) {
             console.error('Sync failed:', error);
             syncNowBtn.textContent = 'Sync Failed';
@@ -68,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveSettingsBtn.addEventListener('click', async () => {
         const serverUrl = serverUrlInput.value.trim();
+        const apiKey = apiKeyInput.value.trim();
         if (!serverUrl) {
             alert('Please enter a valid server URL');
             return;
@@ -77,8 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
             // Try to validate URL format
             new URL(serverUrl);
 
-            // Save the URL
-            await chrome.storage.sync.set({ serverUrl });
+            // Save the URL and API key
+            await chrome.storage.sync.set({ serverUrl, apiKey });
             
             // Show success message
             saveSettingsBtn.textContent = 'Saved!';
@@ -207,35 +213,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function syncBookmarks() {
-        const bookmarks = [];
-        for (const folder of selectedFolders) {
-            const folderBookmarks = await chrome.bookmarks.getChildren(folder.id);
-            bookmarks.push(...folderBookmarks.filter(b => b.url));  // Only include actual bookmarks
-        }
-
-        // Get server URL from storage
-        const { serverUrl } = await chrome.storage.sync.get(['serverUrl']);
+        const { serverUrl, apiKey } = await chrome.storage.sync.get(['serverUrl', 'apiKey']);
         if (!serverUrl) {
             throw new Error('Server URL not configured');
         }
 
-        // Send bookmarks to server
-        const response = await fetch(`${serverUrl}/api/bookmarks`, {
+        // Collect bookmarks recursively from every selected folder, preserving the folder path.
+        const bookmarks = [];
+        for (const folder of selectedFolders) {
+            const subTree = await chrome.bookmarks.getSubTree(folder.id);
+            if (subTree && subTree[0]) {
+                collectBookmarks(subTree[0], folder.title, bookmarks);
+            }
+        }
+
+        // serverUrl is the base API url (e.g. http://localhost:5000/api); post to the batch endpoint.
+        const endpoint = `${serverUrl.replace(/\/+$/, '')}/bookmarks/batch`;
+        const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-API-Key': apiKey || ''
             },
-            body: JSON.stringify(bookmarks)
+            body: JSON.stringify({
+                bookmarks,
+                defaultTags: [],
+                skipDuplicates: true
+            })
         });
 
+        if (response.status === 401) {
+            throw new Error('Unauthorized — check your API key');
+        }
         if (!response.ok) {
             throw new Error(`Server responded with ${response.status}`);
         }
+
+        const result = await response.json();
 
         // Update last sync time
         const now = new Date();
         chrome.storage.sync.set({ lastSync: now.toISOString() });
         updateLastSyncTime(now);
+
+        return result.summary;
+    }
+
+    // Recursively collect bookmark nodes (those with a url), tracking the folder path as sourceFolder.
+    function collectBookmarks(node, path, out) {
+        if (node.url) {
+            out.push({
+                url: node.url,
+                title: node.title || node.url,
+                description: null,
+                sourceFolder: path,
+                dateAdded: node.dateAdded ?? null
+            });
+            return;
+        }
+        if (node.children) {
+            for (const child of node.children) {
+                const nextPath = child.url ? path : `${path}/${child.title}`;
+                collectBookmarks(child, nextPath, out);
+            }
+        }
     }
 
     function updateLastSyncTime(date) {

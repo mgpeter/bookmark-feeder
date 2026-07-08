@@ -59,7 +59,19 @@
                     class="block w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md shadow-sm text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                     placeholder="https://your-server.com/api">
                 <p class="mt-1 text-xs text-slate-400">
-                    Enter the URL of your BookmarkFeeder backend server
+                    Enter the base API URL of your BookmarkFeeder server (e.g. http://localhost:5000/api)
+                </p>
+            </div>
+
+            <div class="space-y-2">
+                <label for="apiKey" class="block text-sm font-medium text-slate-300">
+                    API Key
+                </label>
+                <input type="password" id="apiKey"
+                    class="block w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-md shadow-sm text-white placeholder-slate-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    placeholder="Your X-API-Key value">
+                <p class="mt-1 text-xs text-slate-400">
+                    Sent as the <code class="text-slate-300">X-API-Key</code> header on every sync
                 </p>
             </div>
 
