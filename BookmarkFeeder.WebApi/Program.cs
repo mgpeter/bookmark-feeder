@@ -5,6 +5,7 @@ using BookmarkFeeder.WebApi.Filters;
 using BookmarkFeeder.WebApi.Services;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,7 +38,31 @@ builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+// Declare the X-API-Key security scheme so Scalar/OpenAPI clients show an auth input.
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["ApiKey"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Header,
+            Name = ApiKeyEndpointFilter.HeaderName,
+            Description = "Shared API key sent as the X-API-Key header."
+        };
+
+        document.Security ??= [];
+        document.Security.Add(
+            new OpenApiSecurityRequirement
+            {
+                [new OpenApiSecuritySchemeReference("ApiKey", document, null)] = []
+            });
+
+        return Task.CompletedTask;
+    });
+});
 
 // CORS: the extension authenticates with a custom X-API-Key header (not cookies), so no
 // credentials are needed. AllowAnyOrigin keeps self-hosted deployments flexible.
@@ -60,7 +85,12 @@ app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapScalarApiReference(options =>
+    {
+        // Pre-fill the dev API key so endpoints are testable with one click.
+        options.AddApiKeyAuthentication("ApiKey", scheme => scheme.Value = app.Configuration["Authentication:ApiKey"]);
+        options.AddPreferredSecuritySchemes("ApiKey");
+    });
 }
 
 // Only force HTTPS outside development so the extension's http://localhost sync isn't 307-redirected.
@@ -107,14 +137,14 @@ static async Task InitializeDatabaseAsync(WebApplication app)
 {
     using var scope = app.Services.CreateScope();
     var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<BookmarkDbContext>>();
-    
+
     using var context = factory.CreateDbContext();
-    
+
     try
     {
         // Apply any pending migrations
         await context.Database.MigrateAsync();
-        
+
         // Seed development data if in development environment
         if (app.Environment.IsDevelopment())
         {
