@@ -301,22 +301,22 @@ The BookmarkFeeder roadmap is structured in phases, prioritizing core functional
 
 **Timeline**: 4-6 weeks after Phase 4
 **Status**: 📋 Planned
-**Focus**: Complete Angular frontend for bookmark management
+**Focus**: Complete React frontend for bookmark management
 
 ### Priority 1: Core Frontend Setup
 **Estimated Effort**: 5-7 days
 
 #### Project Setup
-- [ ] Angular 19 project initialization
+- [ ] React 19 + Vite project
 - [ ] Tailwind CSS v4 integration
-- [ ] Shadcn UI component library setup
+- [ ] shadcn/ui component library setup
+- [ ] TanStack Query + React Router setup
 - [ ] Routing and navigation structure
 
-#### Authentication Integration
-- [ ] Login/registration pages
-- [ ] JWT token management
-- [ ] Route guards for protected areas
-- [ ] User profile management
+#### Authentication Integration (single-user MVP)
+- [ ] Settings screen to enter/store the shared `X-API-Key`
+- [ ] `api-client` injects the `X-API-Key` header on requests
+- [ ] Full JWT login/registration, route guards, and user profile management (future / multi-user, post-MVP)
 
 ### Priority 2: Bookmark Management Interface
 **Estimated Effort**: 6-8 days
@@ -364,7 +364,7 @@ The BookmarkFeeder roadmap is structured in phases, prioritizing core functional
 - [ ] Reading progress tracking
 
 ### Phase 5 Deliverables
-- ✅ Complete Angular 19 frontend application
+- ✅ Complete React frontend application
 - ✅ Responsive bookmark management interface
 - ✅ Advanced search and filtering UI
 - ✅ User dashboard with analytics

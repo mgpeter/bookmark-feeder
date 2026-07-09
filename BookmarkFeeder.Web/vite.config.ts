@@ -1,0 +1,19 @@
+import { defineConfig } from 'vite'
+import { fileURLToPath, URL } from 'node:url'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  server: {
+    // Aspire's AddViteApp injects PORT; fall back to Vite's default for standalone runs.
+    port: process.env.PORT ? Number(process.env.PORT) : 5173,
+    host: true,
+  },
+})

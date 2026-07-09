@@ -49,7 +49,7 @@ BookmarkFeeder provides a comprehensive self-hosted alternative that combines:
 
 ### For Self-Hosting Enthusiasts
 - Docker-based deployment with Docker Compose
-- Standard open-source technologies (.NET, PostgreSQL, Angular)
+- Standard open-source technologies (.NET, PostgreSQL, React)
 - Extensible architecture for customization
 
 ## Key Differentiators
@@ -57,7 +57,7 @@ BookmarkFeeder provides a comprehensive self-hosted alternative that combines:
 1. **AI-Powered Organization**: Automatic categorization using OpenAI GPT API
 2. **Privacy-First Design**: Self-hosted with no data leaving user's infrastructure
 3. **Browser-Native Integration**: Purpose-built extension for seamless workflow
-4. **Modern Technology Stack**: Latest .NET 9, Angular 19, and containerized deployment
+4. **Modern Technology Stack**: Latest .NET 10, React 19, and containerized deployment
 5. **Folder-Based Sync**: Selective synchronization of specific bookmark folders
 
 ## Success Metrics

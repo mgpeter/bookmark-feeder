@@ -6,7 +6,7 @@ This project is a self-hosted bookmark management platform intended to replace s
 
 - A **Chrome extension** that integrates with Edge to send user bookmarks to the backend
 - A **.NET 9 Web API** backend to receive, process, and store bookmarks
-- An **Angular 19 frontend** to display and manage bookmarks
+- A **React 19 frontend** to display and manage bookmarks
 - A **PostgreSQL database** for persistent storage
 
 ---
@@ -63,7 +63,7 @@ This project is a self-hosted bookmark management platform intended to replace s
   - Input validation and sanitization
   - Tag normalization (no case-sensitive duplicates)
 
-### 3. **Frontend: BookmarkFeeder.Angular**
+### 3. **Frontend: BookmarkFeeder.Web (React)**
 
 - UI for:
   - Viewing bookmarks (card or list layout)
@@ -111,8 +111,8 @@ This project is a self-hosted bookmark management platform intended to replace s
 
 ## 📝 Tech stack
 
-- Angular 19
-  - <https://angular.dev/overview>
+- React 19 (Vite, TanStack Query, React Router)
+  - <https://react.dev/>
 - .NET 9
   - <https://dotnet.microsoft.com/en-us/download/dotnet/9.0>
 - PostgreSQL

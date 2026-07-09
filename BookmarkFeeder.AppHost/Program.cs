@@ -13,5 +13,11 @@ var apiService = builder.AddProject<Projects.BookmarkFeeder_WebApi>("webapi")
     .WaitFor(postgres)
     .WithEnvironment("Authentication__ApiKey", apiKey);
 
+// React (Vite) web frontend. Standalone npm app; Aspire runs `npm run dev` and injects PORT.
+builder.AddViteApp("web", "../BookmarkFeeder.Web")
+    .WithReference(apiService)
+    .WaitFor(apiService)
+    .WithExternalHttpEndpoints();
+
 builder.Build().Run();
 

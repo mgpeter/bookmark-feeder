@@ -7,7 +7,7 @@ BookmarkFeeder follows a modern microservices-inspired architecture with clear s
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │  Browser        │    │  Web Frontend   │    │  External APIs  │
-│  Extension      │    │  (Angular 19)   │    │  (OpenAI GPT)   │
+│  Extension      │    │  (React 19)     │    │  (OpenAI GPT)   │
 │                 │    │                 │    │                 │
 │  - Bookmark API │    │  - User Interface│   │  - AI Services  │
 │  - Sync Logic   │    │  - Search/Filter│    │  - Categorization│
@@ -124,34 +124,37 @@ public class BookmarkService
 - API versioning strategy (header-based)
 - Comprehensive input validation with FluentValidation
 
-### 3. Web Frontend (BookmarkFeeder.Angular)
-**Technology**: Angular 19, Tailwind CSS v4, Shadcn UI
+### 3. Web Frontend (BookmarkFeeder.Web)
+**Technology**: React 19, Vite, Tailwind CSS v4, shadcn/ui, TanStack Query, React Router
 **Status**: Planned for Phase 3
 
 #### Architecture Patterns
 - **Component-based Architecture**: Reusable UI components
 - **Service-oriented Design**: Separation of data access and UI logic
-- **Reactive Programming**: RxJS for async operations and state management
+- **Server state via TanStack Query**: Data fetching, caching, and mutations
 - **Lazy Loading**: Route-based code splitting for performance
 
 #### Planned Structure
 ```
-BookmarkFeeder.Angular/
-├── src/
-│   ├── app/
-│   │   ├── core/                 # Singleton services
-│   │   │   ├── auth/             # Authentication service
-│   │   │   └── api/              # HTTP client services
-│   │   ├── shared/               # Reusable components
-│   │   │   ├── components/       # UI components
-│   │   │   └── pipes/            # Data transformation
-│   │   ├── features/             # Feature modules
-│   │   │   ├── bookmarks/        # Bookmark management
-│   │   │   ├── search/           # Search functionality
-│   │   │   └── settings/         # User preferences
-│   │   └── layouts/              # Page layouts
-│   ├── assets/                   # Static assets
-│   └── environments/             # Configuration
+BookmarkFeeder.Web/
+├── index.html
+├── vite.config.ts
+└── src/
+    ├── lib/                     # api-client (fetch wrapper), helpers
+    ├── config/                  # App/runtime configuration
+    ├── api/                     # TanStack Query hooks
+    ├── types/                   # Shared TypeScript types
+    ├── components/
+    │   ├── ui/                  # shadcn/ui components
+    │   └── ...                  # Shared components
+    ├── layout/                  # Page layouts
+    ├── features/                # Feature folders
+    │   ├── dashboard/
+    │   ├── bookmarks/
+    │   ├── tags/
+    │   ├── categories/
+    │   └── settings/
+    └── routes.tsx               # React Router route definitions
 ```
 
 ### 4. Database Design
@@ -224,8 +227,9 @@ var postgres = builder.AddPostgres("postgres")
 var apiService = builder.AddProject<Projects.BookmarkFeeder_WebApi>("webapi")
                         .WithReference(postgres);
 
-var frontend = builder.AddProject<Projects.BookmarkFeeder_Angular>("frontend")
-                     .WithReference(apiService);
+var web = builder.AddViteApp("web", "../BookmarkFeeder.Web")
+                 .WithReference(apiService)
+                 .WithExternalHttpEndpoints();
 
 builder.Build().Run();
 ```
@@ -255,13 +259,16 @@ services:
       - postgres
     
   frontend:
-    build: ./BookmarkFeeder.Angular
+    build: ./BookmarkFeeder.Web
     environment:
       API_BASE_URL: http://webapi:8080
     depends_on:
       - webapi
     ports:
       - "80:80"
+    # Production alternative: the API serves the built SPA (dist/) from its
+    # wwwroot, so the frontend and API share a single origin and this
+    # separate service can be omitted.
 
 volumes:
   postgres_data:

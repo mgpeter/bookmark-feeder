@@ -122,5 +122,5 @@ metadata:
 ## Related Rules
 - solution-structure.mdc: For implementing features according to requirements
 - api-integration.mdc: For implementing API features according to requirements
-- frontend-ui.mdc: For implementing UI according to requirements
+- frontend-react-ui.mdc: For implementing UI according to requirements
 </rule> 
