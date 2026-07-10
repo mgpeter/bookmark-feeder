@@ -4,7 +4,9 @@
       "Bash(mkdir:*)",
       "Bash(dotnet build:*)",
       "Bash(dotnet test:*)",
-      "Bash(dotnet ef migrations add:*)"
+      "Bash(dotnet ef migrations add:*)",
+      "Read(//c/Users/mgpet/AppData/Roaming/NuGet/**)",
+      "Bash(dotnet nuget *)"
     ],
     "deny": []
   }

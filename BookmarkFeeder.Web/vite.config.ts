@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
@@ -15,5 +16,10 @@ export default defineConfig({
     // Aspire's AddViteApp injects PORT; fall back to Vite's default for standalone runs.
     port: process.env.PORT ? Number(process.env.PORT) : 5173,
     host: true,
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setup.ts',
   },
 })

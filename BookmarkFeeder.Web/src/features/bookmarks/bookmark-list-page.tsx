@@ -1,4 +1,5 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { useBookmarks } from '@/api/bookmarks'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -6,11 +7,13 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { BookmarkCard } from './bookmark-card'
 import { BookmarkFilters } from './bookmark-filters'
+import { BookmarkEditDialog, type EditTarget } from './bookmark-edit-dialog'
 import { useBookmarkQuery } from './use-bookmark-query'
 
 export function BookmarkListPage() {
   const { query, patch, view } = useBookmarkQuery()
   const { data, isLoading, isError, error, isPlaceholderData } = useBookmarks(query)
+  const [dialogTarget, setDialogTarget] = useState<EditTarget>(null)
 
   const pagination = data?.pagination
   const page = pagination?.page ?? query.page ?? 1
@@ -25,6 +28,10 @@ export function BookmarkListPage() {
             {pagination ? `${pagination.totalItems} total` : 'Loading…'}
           </p>
         </div>
+        <Button onClick={() => setDialogTarget('new')}>
+          <Plus className="mr-1 h-4 w-4" />
+          Add bookmark
+        </Button>
       </div>
 
       <BookmarkFilters />
@@ -44,7 +51,12 @@ export function BookmarkListPage() {
       ) : data && data.data.length > 0 ? (
         <div className={cn(gridClass(view), isPlaceholderData && 'opacity-60')}>
           {data.data.map((bookmark) => (
-            <BookmarkCard key={bookmark.id} bookmark={bookmark} view={view} />
+            <BookmarkCard
+              key={bookmark.id}
+              bookmark={bookmark}
+              view={view}
+              onEdit={setDialogTarget}
+            />
           ))}
         </div>
       ) : (
@@ -80,6 +92,8 @@ export function BookmarkListPage() {
           </Button>
         </div>
       )}
+
+      <BookmarkEditDialog target={dialogTarget} onClose={() => setDialogTarget(null)} />
     </div>
   )
 }

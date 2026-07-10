@@ -15,6 +15,8 @@ export function useBookmarkQuery() {
     tags: params.get('tags') || undefined,
     categories: params.get('categories') || undefined,
     sourceFolder: params.get('source') || undefined,
+    dateFrom: params.get('from') || undefined,
+    dateTo: params.get('to') || undefined,
     isRead: read === 'read' ? true : read === 'unread' ? false : undefined,
     sortBy: (params.get('sort') as SortBy | null) ?? 'dateAdded',
     sortOrder: (params.get('dir') as SortOrder | null) ?? 'desc',

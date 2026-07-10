@@ -1,10 +1,20 @@
 import { useEffect, useState } from 'react'
-import { ArrowDownAZ, ArrowUpAZ, LayoutGrid, List, Search, Tag, X } from 'lucide-react'
+import {
+  ArrowDownAZ,
+  ArrowUpAZ,
+  LayoutGrid,
+  List,
+  Search,
+  SlidersHorizontal,
+  Tag,
+  X,
+} from 'lucide-react'
 import { useTags } from '@/api/tags'
 import { useCategories, flattenCategories } from '@/api/categories'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Popover,
   PopoverContent,
@@ -54,11 +64,14 @@ export function BookmarkFilters() {
   }
 
   const flatCategories = categories.data ? flattenCategories(categories.data) : []
+  const moreCount =
+    (query.sourceFolder ? 1 : 0) + (query.dateFrom ? 1 : 0) + (query.dateTo ? 1 : 0)
   const hasFilters =
     Boolean(query.search) ||
     selectedTags.length > 0 ||
     Boolean(query.categories) ||
-    readFilter !== 'all'
+    readFilter !== 'all' ||
+    moreCount > 0
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -142,6 +155,52 @@ export function BookmarkFilters() {
         </SelectContent>
       </Select>
 
+      {/* More filters: source folder + date range */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="gap-2">
+            <SlidersHorizontal className="h-4 w-4" />
+            More
+            {moreCount > 0 && (
+              <span className="rounded bg-primary px-1.5 text-xs text-primary-foreground">
+                {moreCount}
+              </span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-72 space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="source-folder">Source folder</Label>
+            <Input
+              id="source-folder"
+              defaultValue={query.sourceFolder ?? ''}
+              placeholder="e.g. Bookmarks Bar/Tech"
+              onBlur={(e) => patch({ source: e.target.value || null })}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="date-from">Added after</Label>
+              <Input
+                id="date-from"
+                type="date"
+                value={query.dateFrom ?? ''}
+                onChange={(e) => patch({ from: e.target.value || null })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="date-to">Added before</Label>
+              <Input
+                id="date-to"
+                type="date"
+                value={query.dateTo ?? ''}
+                onChange={(e) => patch({ to: e.target.value || null })}
+              />
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
+
       {/* Sort */}
       <Select value={query.sortBy} onValueChange={(v) => patch({ sort: v })}>
         <SelectTrigger className="w-40">
@@ -187,7 +246,15 @@ export function BookmarkFilters() {
           variant="ghost"
           size="sm"
           onClick={() =>
-            patch({ q: null, tags: null, categories: null, source: null, read: null })
+            patch({
+              q: null,
+              tags: null,
+              categories: null,
+              source: null,
+              read: null,
+              from: null,
+              to: null,
+            })
           }
         >
           <X className="mr-1 h-4 w-4" />
