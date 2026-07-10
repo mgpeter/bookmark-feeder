@@ -23,7 +23,8 @@ icon_library: lucide-react
 browser_extension: Chrome/Edge Manifest V3, vanilla JavaScript + Tailwind
 ai_integration: LLM categorization (provider TBD) — planned
 application_hosting: Self-hosted Docker (target: Synology NAS)
-web_frontend_hosting: Standalone Vite app (Aspire AddViteApp in dev); production build served single-origin from the API's wwwroot
+web_frontend_hosting: Standalone Vite app (Aspire AddViteApp in dev); static nginx container in prod
+reverse_proxy_gateway: YARP (.NET) — single external origin routing /api → api and / → web (dev + prod)
 database_hosting: Self-hosted PostgreSQL (Docker container)
 asset_hosting: Served by the API (same origin/container)
 deployment_solution: Docker Compose

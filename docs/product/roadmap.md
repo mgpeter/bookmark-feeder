@@ -35,16 +35,16 @@ tested (56 backend tests passing).
 ## Phase 2: Production & Deployment
 
 **Goal:** Run BookmarkFeeder reliably on a self-hosted Docker/NAS environment.
-**Success Criteria:** `docker compose up` brings up Postgres + API (serving the built web app) behind a reverse proxy; health probes green; rate limits enforced.
+**Success Criteria:** `docker compose up` brings up Postgres + api + web behind a YARP gateway on a single exposed port; health probes green; rate limits enforced.
 
 ### Features
 
-- [ ] Docker Compose (Postgres + API serving the static SPA from wwwroot) `L`
-- [ ] Production build pipeline (Vite build → wwwroot, `MapFallbackToFile`) `M`
-- [ ] Reverse proxy + SSL/TLS guidance (Nginx/Traefik) `M`
-- [ ] Production health/readiness endpoints + structured logging `S`
+- [ ] YARP reverse-proxy gateway — single external origin (`/api`→api, `/`→web), dev + prod `M`
+- [ ] Web served as its own container (Vite dev / static nginx); relative `/api`, no CORS `M`
+- [ ] API production hardening (forwarded headers, opt-in HTTPS redirect, prod health endpoints) `S`
 - [ ] Per-endpoint rate limiting (bulk/sync, CRUD, search) `M`
 - [ ] Integration tests against real PostgreSQL (Testcontainers) `M`
+- [ ] Aspire publish → Docker Compose (gateway + api + web + postgres) `L`
 
 ### Dependencies
 

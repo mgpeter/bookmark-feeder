@@ -110,16 +110,17 @@ React (Angular required a stand-in). Product docs were updated Angular → React
 ## 2026-07-09: Standalone Vite App via Aspire (not SpaProxy)
 
 **ID:** DEC-005
-**Status:** Accepted
+**Status:** Accepted (production hosting superseded by DEC-007)
 **Category:** Technical
 **Stakeholders:** Tech Lead
 
 ### Decision
 
 The web app is a **standalone Vite project** (`BookmarkFeeder.Web`, no `.csproj`)
-run as an Aspire resource via `AddViteApp`. In production the API serves the
-built static files from `wwwroot` (single origin), rather than hosting React
-inside an ASP.NET Core SpaProxy project.
+run as an Aspire resource via `AddViteApp`. (Originally the API was to serve the
+built static files from `wwwroot` for a single origin; the production hosting
+approach was later replaced by a YARP gateway — see DEC-007. The standalone-Vite
+decision still stands.)
 
 ### Rationale
 
@@ -153,3 +154,40 @@ before adding more features; search and AI layer on afterward.
 
 **Positive:** A usable, self-hosted product sooner.
 **Negative:** The headline AI feature lands later than a feature-first ordering.
+
+## 2026-07-09: Production Topology — YARP Gateway (supersedes DEC-005 hosting)
+
+**ID:** DEC-007
+**Status:** Accepted
+**Category:** Technical
+**Stakeholders:** Product Owner, Tech Lead
+**Related Spec:** @docs/specs/2026-07-09-production-deployment/
+**Supersedes:** the production-hosting part of DEC-005
+
+### Decision
+
+Production runs as separate containers behind a **YARP reverse-proxy gateway** that is
+the single external entry point: `/api/{**}` → the API, `/{**}` → a static web
+container, with PostgreSQL behind them. The same gateway runs as an Aspire resource in
+dev, so routing is identical across environments. The API no longer serves the SPA.
+
+### Context
+
+The single-origin "API serves the SPA from wwwroot" approach forced the frontend to
+work differently across dev and prod (base-path/rewrite handling) and coupled the SPA
+build into the API image. A gateway keeps the containers separate and simple, gives one
+external origin with no CORS for the web app, and — being a .NET/Aspire-native YARP
+project — runs in dev and publishes to compose the same way.
+
+### Deviation
+
+Replaces DEC-005's production hosting (API-served wwwroot, single container) with a
+four-service topology (gateway, api, web, postgres). The standalone-Vite web project
+from DEC-005 is unchanged.
+
+### Consequences
+
+**Positive:** One external origin, no CORS for the web app, no frontend path rewrites,
+clean separation of concerns, identical dev/prod routing.
+**Negative:** One more service (the gateway) to run and publish; Vite HMR must be
+configured to work through the gateway in dev.
