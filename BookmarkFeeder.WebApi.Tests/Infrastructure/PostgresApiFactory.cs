@@ -18,8 +18,11 @@ public class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public const string TestApiKey = "test-key";
 
+    // Same image and major version the AppHost pins for dev and production. Tests previously ran
+    // 17-alpine while production emitted 18.x, so the suite validated a major version nothing
+    // shipped — exactly the drift a tsvector/generated-column feature set cannot afford.
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
-        .WithImage("postgres:17-alpine")
+        .WithImage("postgres:18.3")
         .Build();
 
     public async Task InitializeAsync()

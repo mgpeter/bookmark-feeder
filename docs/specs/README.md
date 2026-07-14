@@ -7,8 +7,8 @@ API, schema) and — once broken down for execution — `tasks.md`.
 
 | Status | Meaning |
 |---|---|
-| `Planning` | Written and agreed, but not yet broken into tasks. `tasks.md` does not exist. |
-| `In Progress` | `tasks.md` exists and some parent tasks are checked off. |
+| `Planning` | Agreed but not started. Usually no `tasks.md`; sometimes broken down and queued to execute. |
+| `In Progress` | Execution has begun — at least one parent task is checked off. |
 | `Completed` | Every parent task in `tasks.md` is checked off and verified. |
 
 The authoritative status of a spec is the `> Status:` line in its own `spec.md`; this table is a
@@ -25,6 +25,7 @@ Written, not yet broken into tasks.
 
 | Spec | What it adds | Notes |
 |---|---|---|
+| [nas-deploy-pipeline](2026-07-15-nas-deploy-pipeline/) | Repeatable Aspire → Docker Compose → Synology NAS deploy: pinned prod versions, Docker Hub images, a runnable compose artifact, deploy runbook | **`tasks.md` written — ready to execute.** Task 1 is a correctness fix (prod Postgres is unpinned and drifts from the tested version). Task 4 needs NAS access, so it's a joint session |
 | [extension-auto-sync](2026-07-14-extension-auto-sync/) | MV3 service worker syncing on a `chrome.alarms` schedule, badge + error state | Groundwork done: `src/lib/sync.ts` is UI-free so the worker can import `runSync()` as-is, and a re-sync is proven to be a safe no-op (0 created / 260 skipped). The favicon queue/worker is the server-side counterpart pattern |
 | [extension-publishing](2026-07-14-extension-publishing/) | Store submission: release pipeline, narrowed host permissions, assets, privacy policy | **Partly delivered already**: `npm run zip` exists (built during extension-redesign-sync task 4.1), and `icons/ai.png` is the 1024px master for promo art. Still outstanding: narrowing `host_permissions` from `https://*/*` to the configured origin, store assets, privacy policy, submission runbook. Best done *after* auto-sync, to avoid shipping twice |
 | [import-export](2026-07-14-import-export/) | Netscape/Pocket import; JSON/HTML/CSV export | Least urgent now the extension is the browser-import path; the real value is Pocket migration and data portability |
@@ -54,6 +55,15 @@ Not spec-scoped; each needs its own change.
   surfacing as `NU1903` on every build. Transitive via the OpenAPI/Scalar setup.
 - **Nested `sourceFolder` paths are unverified by a live sync.** Both folders synced from real
   browsers were flat; nesting is covered only by unit tests and seeded rows.
+- ⚠️ **BookmarkFeeder has never actually been deployed.** `production-deployment` is marked Completed,
+  but its own tasks.md (6.4) downgrades `docker compose up` to *"verified by inspection"* — the YAML
+  was read, never run — and `publish/.env` holds only blank keys. `docs/deployment.md` documents a
+  flow that cannot work and claims `.env` "contains secrets" when it does not. Being addressed by
+  [nas-deploy-pipeline](2026-07-15-nas-deploy-pipeline/).
+- ~~The production Postgres version is unpinned.~~ **Fixed** (nas-deploy-pipeline task 1): pinned to
+  `18.3` in the AppHost and the tests moved from `17-alpine` to match, so the suite now tests the
+  version that ships. The data volume name is pinned too — it was a hashed value that differed between
+  `aspire run` and `aspire publish`, which would have silently given the NAS an empty database.
 - **Favicon enrichment has never run against the real collection.** All 434 bookmarks still have
   `faviconUrl: null`; the backfill queues them on the next AppHost start. Until then, resolution
   rates and the politeness limits are only proven against stubs.

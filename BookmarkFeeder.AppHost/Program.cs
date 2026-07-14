@@ -7,8 +7,17 @@ builder.AddDockerComposeEnvironment("compose");
 // (see appsettings.Development.json for the local default; override via user-secrets in production).
 var apiKey = builder.AddParameter("api-key", secret: true);
 
+// Pinned explicitly: unpinned, this floats on whatever Aspire's default happens to be, so an
+// Aspire upgrade could change the database's MAJOR version under a live data volume. 18.x is
+// what the dev volume already holds (PG_VERSION = 18) and what the test suite runs.
+// The volume is named explicitly. Left to itself, WithDataVolume() derives a hashed name that
+// differs between contexts (dev run emitted ...-c707ae991a-..., publish emitted ...-190750286b-...).
+// On a NAS that is a silent data-loss trap: a shifted hash means compose creates a fresh empty
+// volume and the collection appears to vanish. A fixed name makes the database's identity
+// deterministic across every publish.
 var postgres = builder.AddPostgres("postgres")
-    .WithDataVolume()
+    .WithImageTag("18.3")
+    .WithDataVolume("bookmarkfeeder-postgres-data")
     .AddDatabase("bookmarkfeeder");
 
 var apiService = builder.AddProject<Projects.BookmarkFeeder_WebApi>("webapi")
