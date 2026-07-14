@@ -37,11 +37,17 @@
 
   **Test-quality note:** three tests initially passed against the *old* `ILIKE` code for the wrong reasons — the tag test's URL contained the search token, and both ranking tests created the title-match second so `dateAdded desc` ordered them correctly by accident. Rewritten to isolate the behaviour under test before implementing.
 
-- [ ] 3. Facets in the list response
-  - [ ] 3.1 Write tests: tag/category counts reflect the current search+filters, count the whole result set (not just the page), and are absent/empty when nothing is active
-  - [ ] 3.2 Compute tag + category facets over the filtered `IQueryable` before `Skip`/`Take`
-  - [ ] 3.3 Add `facets` additively to the response so existing consumers are unaffected
-  - [ ] 3.4 Verify tests pass
+- [x] 3. Facets in the list response
+  - [x] 3.1 `Tests/Infrastructure/FacetTests.cs` (7 tests): absent when nothing narrows, tag counts span the whole match not the page, counts reflect the search, category counts (uncategorised excluded), present for a filter without a search, empty on no matches, and the old `PagedResult<BookmarkDto>` shape still deserialises
+  - [x] 3.2 `BuildFacetsAsync` groups tags and categories over the filtered query **before** `Skip`/`Take`. `Include`s moved to the page query only — the count and facet aggregates project their own shapes and shouldn't pay for the joins
+  - [x] 3.3 `BookmarkListResult : PagedResult<BookmarkDto>` adds nullable `Facets`. Inheritance keeps `PagedResult<T>` meaningful (it's generic and lives in `Common/`, so bookmark-specific facets don't belong on it) and the addition is purely additive — pinned by the backward-compatibility test
+  - [x] 3.4 104/104 backend tests pass (97 + 7 new)
+
+  **Facets are computed only when something narrows the set** (`HasNarrowingFilters`), matching the spec: two extra aggregate queries on every unfiltered list load would buy nothing, since there's nothing to refine.
+
+  **EF translation note:** ordering must sit on the grouping (`OrderByDescending(g => g.Count())`), not the projection. `OrderByDescending(f => f.Count)` over the already-projected `FacetItemDto` fails to translate at runtime — it threw a 500, not a compile error.
+
+  **Test-fixture note:** `Facets_ReflectTheSearchFilter` failed twice against correct code because the fixture leaked matches into the "excluded" bookmark — first via its **url** (url words are indexed since Task 1), then via its **tag name** (search matches tag names since Task 2). Both features working as designed; the test data had to stop containing the search token.
 
 - [ ] 4. Saved searches — entity, service, endpoints
   - [ ] 4.1 Write tests: create → list → delete round-trip; `400` on empty name/query; `404` deleting an unknown id; `401` without the API key

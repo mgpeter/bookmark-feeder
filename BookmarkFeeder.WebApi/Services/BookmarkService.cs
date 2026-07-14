@@ -15,7 +15,7 @@ public enum BookmarkError
 
 public interface IBookmarkService
 {
-    Task<PagedResult<BookmarkDto>> GetBookmarksAsync(BookmarkQuery query, CancellationToken ct = default);
+    Task<BookmarkListResult> GetBookmarksAsync(BookmarkQuery query, CancellationToken ct = default);
     Task<BookmarkDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
     Task<(BookmarkDto? Dto, BookmarkError Error)> CreateAsync(CreateBookmarkRequest request, CancellationToken ct = default);
     Task<(BookmarkDto? Dto, BookmarkError Error)> UpdateAsync(Guid id, UpdateBookmarkRequest request, CancellationToken ct = default);
@@ -32,33 +32,76 @@ public interface IBookmarkService
 
 public class BookmarkService(IDbContextFactory<BookmarkDbContext> contextFactory) : IBookmarkService
 {
-    public async Task<PagedResult<BookmarkDto>> GetBookmarksAsync(BookmarkQuery query, CancellationToken ct = default)
+    public async Task<BookmarkListResult> GetBookmarksAsync(BookmarkQuery query, CancellationToken ct = default)
     {
         var page = query.Page is > 0 ? query.Page.Value : 1;
         var pageSize = Math.Clamp(query.PageSize ?? 20, 1, 100);
 
         await using var context = await contextFactory.CreateDbContextAsync(ct);
 
-        IQueryable<Bookmark> q = context.Bookmarks
-            .AsNoTracking()
+        var searchTerm = query.Search?.Trim();
+
+        // The filtered set, without Includes: the count and the facet aggregates project their
+        // own shapes and would only pay for the joins.
+        var filtered = ApplyFilters(context, context.Bookmarks.AsNoTracking(), query, searchTerm);
+
+        var total = await filtered.CountAsync(ct);
+
+        // Facets describe the whole match, so they are computed before Skip/Take — a facet that
+        // only counted the current page would be worse than none.
+        var facets = HasNarrowingFilters(query) ? await BuildFacetsAsync(filtered, ct) : null;
+
+        var paged = filtered
             .Include(b => b.Category)
             .Include(b => b.BookmarkTags)
                 .ThenInclude(bt => bt.Tag);
 
-        var searchTerm = query.Search?.Trim();
-        q = ApplyFilters(context, q, query, searchTerm);
-
-        var total = await q.CountAsync(ct);
-
-        q = ApplySort(q, query.SortBy, query.SortOrder, searchTerm);
-
-        var items = await q
+        var items = await ApplySort(paged, query.SortBy, query.SortOrder, searchTerm)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(ct);
 
         var data = items.Select(ToDto).ToList();
-        return PagedResult<BookmarkDto>.Create(data, page, pageSize, total);
+        var totalPages = pageSize <= 0 ? 0 : (int)Math.Ceiling(total / (double)pageSize);
+        return new BookmarkListResult(data, new PaginationDto(page, pageSize, total, totalPages), facets);
+    }
+
+    /// <summary>
+    /// Whether anything is narrowing the result set. Paging and sorting don't count: they change
+    /// what you see, not which bookmarks match.
+    /// </summary>
+    private static bool HasNarrowingFilters(BookmarkQuery query) =>
+        !string.IsNullOrWhiteSpace(query.Search) ||
+        !string.IsNullOrWhiteSpace(query.Tags) ||
+        !string.IsNullOrWhiteSpace(query.Categories) ||
+        !string.IsNullOrWhiteSpace(query.SourceFolder) ||
+        query.IsRead.HasValue ||
+        query.DateFrom.HasValue ||
+        query.DateTo.HasValue;
+
+    private static async Task<BookmarkFacetsDto> BuildFacetsAsync(
+        IQueryable<Bookmark> filtered, CancellationToken ct)
+    {
+        // Ordered by count then name so the panel is stable between identical requests.
+        // The ordering sits on the grouping, not the projection: EF cannot translate an
+        // OrderBy over a property of an already-projected record.
+        var tags = await filtered
+            .SelectMany(b => b.BookmarkTags)
+            .GroupBy(bt => new { bt.Tag.Id, bt.Tag.Name })
+            .OrderByDescending(g => g.Count())
+            .ThenBy(g => g.Key.Name)
+            .Select(g => new FacetItemDto(g.Key.Id, g.Key.Name, g.Count()))
+            .ToListAsync(ct);
+
+        var categories = await filtered
+            .Where(b => b.CategoryId != null)
+            .GroupBy(b => new { Id = b.CategoryId!.Value, b.Category!.Name })
+            .OrderByDescending(g => g.Count())
+            .ThenBy(g => g.Key.Name)
+            .Select(g => new FacetItemDto(g.Key.Id, g.Key.Name, g.Count()))
+            .ToListAsync(ct);
+
+        return new BookmarkFacetsDto(tags, categories);
     }
 
     public async Task<BookmarkDto?> GetByIdAsync(Guid id, CancellationToken ct = default)
