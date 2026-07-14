@@ -42,6 +42,16 @@ public class BatchCreateRequestValidator : AbstractValidator<BatchCreateRequest>
     }
 }
 
+public class CreateSavedSearchRequestValidator : AbstractValidator<CreateSavedSearchRequest>
+{
+    public CreateSavedSearchRequestValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
+        // Matches the column; reject here rather than letting the database do it.
+        RuleFor(x => x.Query).NotEmpty().MaximumLength(2048);
+    }
+}
+
 public class CreateTagRequestValidator : AbstractValidator<CreateTagRequest>
 {
     public CreateTagRequestValidator()

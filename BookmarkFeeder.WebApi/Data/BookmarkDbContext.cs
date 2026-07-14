@@ -13,6 +13,7 @@ public class BookmarkDbContext : DbContext
     public DbSet<Tag> Tags { get; set; }
     public DbSet<Category> Categories { get; set; }
     public DbSet<BookmarkTag> BookmarkTags { get; set; }
+    public DbSet<SavedSearch> SavedSearches { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -90,6 +91,16 @@ public class BookmarkDbContext : DbContext
                   .WithMany(e => e.SubCategories)
                   .HasForeignKey(e => e.ParentCategoryId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // SavedSearch configuration
+        modelBuilder.Entity<SavedSearch>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).HasMaxLength(200).IsRequired();
+            // Opaque serialized param string; 2048 mirrors the url length limit.
+            entity.Property(e => e.Query).HasMaxLength(2048).IsRequired();
+            entity.HasIndex(e => e.DateCreated);
         });
 
         // BookmarkTag configuration (many-to-many)

@@ -49,12 +49,18 @@
 
   **Test-fixture note:** `Facets_ReflectTheSearchFilter` failed twice against correct code because the fixture leaked matches into the "excluded" bookmark — first via its **url** (url words are indexed since Task 1), then via its **tag name** (search matches tag names since Task 2). Both features working as designed; the test data had to stop containing the search token.
 
-- [ ] 4. Saved searches — entity, service, endpoints
-  - [ ] 4.1 Write tests: create → list → delete round-trip; `400` on empty name/query; `404` deleting an unknown id; `401` without the API key
-  - [ ] 4.2 `Models/SavedSearch.cs` + `IEntityTypeConfiguration` (explicit column types) + migration for `SavedSearches`
-  - [ ] 4.3 `ISavedSearchService`/`SavedSearchService` via `IDbContextFactory` (no generic repository)
-  - [ ] 4.4 `SavedSearchEndpoints` mapped at `/api/searches` inside the `/api` group (API-key filter + reads/writes rate limits) + FluentValidation validator
-  - [ ] 4.5 Verify tests pass
+- [x] 4. Saved searches — entity, service, endpoints
+  - [x] 4.1 `Tests/Infrastructure/SavedSearchTests.cs` (10 tests): create→list→delete round-trip, `Location` header, `400` on empty/whitespace name or query (4 cases), `400` on a query over 2048, `404` deleting an unknown id, `401` on all three verbs, newest-first ordering
+  - [x] 4.2 `Models/SavedSearch.cs` + migration `AddSavedSearches` (`Name` varchar(200), `Query` varchar(2048), `DateCreated` timestamptz, index on `DateCreated`) — matches database-schema.md
+  - [x] 4.3 `ISavedSearchService`/`SavedSearchService` via `IDbContextFactory`, no generic repository. Delete is a hard `ExecuteDeleteAsync` — a saved search is a shortcut, not a record worth soft-deleting
+  - [x] 4.4 `SavedSearchEndpoints` at `/api/searches` inside the `/api` group (inherits the API-key filter; `writes` limit on create/delete) + `CreateSavedSearchRequestValidator`
+  - [x] 4.5 114/114 backend tests pass (104 + 10 new)
+
+  **Configured inline in `BookmarkDbContext`, not via `IEntityTypeConfiguration`** as 4.2 originally said. The technical spec says "Configured in `BookmarkDbContext`" and every existing entity is configured inline there; the project convention wins over the general preference.
+
+  ⚠️ **Red state not observed for this task.** The tests reference the new DTOs, so they could not compile before the implementation existed — a compile error, not a meaningful failing test. They assert real behaviour (404/401/400/round-trip), but the TDD discipline was weaker here than in tasks 1–3.
+
+  **Not implemented — unique index on `Name`.** database-schema.md leaves it optional ("decide during implementation; not required"). Skipped: duplicate names are harmless for a personal shortcut list, and a unique constraint would turn a re-save into a 409 the UI has no story for.
 
 - [ ] 5. Frontend — relevance, highlighting, facets, saved searches
   - [ ] 5.1 Write component tests: highlight helper (incl. regex-unsafe terms), relevance defaults when `q` is present, clicking a facet patches the URL filters, applying a saved search pushes its params

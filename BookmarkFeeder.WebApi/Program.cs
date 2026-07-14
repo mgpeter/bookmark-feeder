@@ -43,6 +43,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddScoped<IBookmarkService, BookmarkService>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ISavedSearchService, SavedSearchService>();
 
 // FluentValidation validators.
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
@@ -164,6 +165,7 @@ var api = app.MapGroup("/api")
 api.MapGroup("/bookmarks").MapBookmarkEndpoints().WithTags("Bookmarks");
 api.MapGroup("/tags").MapTagEndpoints().WithTags("Tags");
 api.MapGroup("/categories").MapCategoryEndpoints().WithTags("Categories");
+api.MapGroup("/searches").MapSavedSearchEndpoints().WithTags("Saved searches");
 
 // Initialize database (skip during design-time builds)
 if (!IsDesignTimeBuild())
