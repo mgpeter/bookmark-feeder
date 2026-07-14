@@ -81,7 +81,10 @@ async function request<T>(
 export const api = {
   get: <T>(path: string, params?: Record<string, unknown>) =>
     request<T>('GET', path, { params }),
-  post: <T>(path: string, body?: unknown) => request<T>('POST', path, { body }),
+  // params as well as a body: bulk actions filter via the query string (the same shape the
+  // GET uses) while carrying their target state in the body.
+  post: <T>(path: string, body?: unknown, params?: Record<string, unknown>) =>
+    request<T>('POST', path, { body, params }),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, { body }),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, { body }),
   del: <T>(path: string, params?: Record<string, unknown>) =>

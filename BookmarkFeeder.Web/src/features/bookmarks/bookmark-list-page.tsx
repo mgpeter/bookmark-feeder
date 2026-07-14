@@ -1,23 +1,46 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { useBookmarks } from '@/api/bookmarks'
+import { CheckCheck, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { toast } from 'sonner'
+import { useBookmarks, useMarkAllRead } from '@/api/bookmarks'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { hasNarrowingFilters } from '@/lib/bookmark-filters'
 import { cn } from '@/lib/utils'
 import { BookmarkCard } from './bookmark-card'
 import { BookmarkFilters } from './bookmark-filters'
 import { BookmarkEditDialog, type EditTarget } from './bookmark-edit-dialog'
+import { MarkAllReadDialog } from './mark-all-read-dialog'
 import { useBookmarkQuery } from './use-bookmark-query'
 
 export function BookmarkListPage() {
   const { query, patch, view } = useBookmarkQuery()
   const { data, isLoading, isError, error, isPlaceholderData } = useBookmarks(query)
   const [dialogTarget, setDialogTarget] = useState<EditTarget>(null)
+  const [confirmMarkAll, setConfirmMarkAll] = useState(false)
+  const markAllRead = useMarkAllRead()
 
   const pagination = data?.pagination
   const page = pagination?.page ?? query.page ?? 1
   const totalPages = pagination?.totalPages ?? 1
+  const totalItems = pagination?.totalItems ?? 0
+
+  function markAll() {
+    setConfirmMarkAll(false)
+    markAllRead.mutate(
+      { query, isRead: true },
+      {
+        onSuccess: ({ updated }) =>
+          toast.success(
+            updated === 0
+              ? 'Every matching bookmark was already read'
+              : `Marked ${updated.toLocaleString()} bookmark${updated === 1 ? '' : 's'} as read`,
+          ),
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : 'Could not mark bookmarks as read'),
+      },
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -28,10 +51,20 @@ export function BookmarkListPage() {
             {pagination ? `${pagination.totalItems} total` : 'Loading…'}
           </p>
         </div>
-        <Button onClick={() => setDialogTarget('new')}>
-          <Plus className="mr-1 h-4 w-4" />
-          Add bookmark
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setConfirmMarkAll(true)}
+            disabled={isLoading || totalItems === 0 || markAllRead.isPending}
+          >
+            <CheckCheck className="mr-1 h-4 w-4" />
+            Mark all as read
+          </Button>
+          <Button onClick={() => setDialogTarget('new')}>
+            <Plus className="mr-1 h-4 w-4" />
+            Add bookmark
+          </Button>
+        </div>
       </div>
 
       <BookmarkFilters />
@@ -94,6 +127,14 @@ export function BookmarkListPage() {
       )}
 
       <BookmarkEditDialog target={dialogTarget} onClose={() => setDialogTarget(null)} />
+
+      <MarkAllReadDialog
+        open={confirmMarkAll}
+        count={totalItems}
+        isFiltered={hasNarrowingFilters(query)}
+        onConfirm={markAll}
+        onOpenChange={setConfirmMarkAll}
+      />
     </div>
   )
 }

@@ -2,7 +2,8 @@
 
 > Spec: Mark All As Read
 > Created: 2026-07-14
-> Status: Planning
+> Status: Completed
+> Completed: 2026-07-14
 
 ## Overview
 
