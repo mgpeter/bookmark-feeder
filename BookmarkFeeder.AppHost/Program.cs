@@ -14,9 +14,16 @@ var apiService = builder.AddProject<Projects.BookmarkFeeder_WebApi>("webapi")
     .WithEnvironment("Authentication__ApiKey", apiKey);
 
 // React (Vite) web frontend. Standalone npm app; Aspire runs `npm run dev` and injects PORT.
-builder.AddViteApp("web", "../BookmarkFeeder.Web")
+// Internal only — reached through the gateway, not exposed directly.
+var web = builder.AddViteApp("web", "../BookmarkFeeder.Web");
+
+// YARP gateway: the single external entry point. Routes /api -> webapi and / -> web
+// via service discovery (destinations "http://api" / "http://web").
+builder.AddProject<Projects.BookmarkFeeder_Gateway>("gateway")
     .WithReference(apiService)
     .WaitFor(apiService)
+    .WithReference(web)
+    .WaitFor(web)
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();

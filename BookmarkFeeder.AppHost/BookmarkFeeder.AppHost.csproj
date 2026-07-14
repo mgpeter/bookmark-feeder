@@ -19,6 +19,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\BookmarkFeeder.WebApi\BookmarkFeeder.WebApi.csproj" />
+      <ProjectReference Include="..\BookmarkFeeder.Gateway\BookmarkFeeder.Gateway.csproj" />
     </ItemGroup>
 
 </Project>
