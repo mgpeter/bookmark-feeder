@@ -4,6 +4,7 @@ using BookmarkFeeder.WebApi.Endpoints;
 using BookmarkFeeder.WebApi.Filters;
 using BookmarkFeeder.WebApi.Services;
 using FluentValidation;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 
@@ -27,6 +28,15 @@ builder.Services.AddHealthChecks()
     .AddDbContextCheck<BookmarkDbContext>("database");
 
 builder.Services.AddProblemDetails();
+
+// Trust X-Forwarded-For/Proto from the gateway so the API sees the real scheme/client IP.
+// KnownProxies/Networks are cleared because the gateway sits on an internal container network.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // Application services (consume IDbContextFactory<BookmarkDbContext>).
 builder.Services.AddScoped<IBookmarkService, BookmarkService>();
@@ -79,6 +89,9 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Must run first so downstream middleware sees the gateway-forwarded scheme/IP.
+app.UseForwardedHeaders();
+
 app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
@@ -93,12 +106,16 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Only force HTTPS outside development so the extension's http://localhost sync isn't 307-redirected.
-if (!app.Environment.IsDevelopment())
+// HTTPS redirect is opt-in (config `Https:Redirect`, default off): behind the gateway the API
+// runs plain HTTP, and forcing HTTPS there would break requests. Enable only when TLS is
+// terminated at the API itself.
+if (app.Configuration.GetValue<bool>("Https:Redirect"))
 {
     app.UseHttpsRedirection();
 }
 
+// CORS is retained solely for the browser extension (cross-origin). The web app is same-origin
+// via the gateway and does not rely on it.
 app.UseCors();
 
 app.MapDefaultEndpoints();
