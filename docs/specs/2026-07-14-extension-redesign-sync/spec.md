@@ -2,7 +2,8 @@
 
 > Spec: Extension Redesign & Sync Focus
 > Created: 2026-07-14
-> Status: Planning
+> Status: Completed
+> Completed: 2026-07-14
 
 ## Overview
 

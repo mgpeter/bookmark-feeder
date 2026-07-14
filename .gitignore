@@ -401,3 +401,5 @@ FodyWeavers.xsd
 
 # Aspire publish output (contains secrets in .env)
 /publish/
+
+.claude/settings.local.json

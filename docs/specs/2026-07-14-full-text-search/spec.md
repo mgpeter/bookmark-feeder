@@ -2,7 +2,8 @@
 
 > Spec: Full-text Search & Discovery
 > Created: 2026-07-14
-> Status: Planning
+> Status: In Progress
+> Started: 2026-07-14
 
 ## Overview
 
