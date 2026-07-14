@@ -68,6 +68,19 @@ public static class BookmarkEndpoints
             .WithName("MarkBookmarkRead")
             .RequireRateLimiting("writes");
 
+        // Filters bind from the query string — the same BookmarkQuery the GET binds, so the client
+        // sends one filter string for both and the marked set cannot drift from the shown set.
+        // The target state binds from the body: 'isRead' in the query string is already the
+        // read-state *filter*, so ?isRead=false + {"isRead":true} means "mark the unread ones read".
+        group.MapPost("/mark-read", async (
+                [AsParameters] BookmarkQuery query,
+                MarkReadRequest request,
+                IBookmarkService service,
+                CancellationToken ct) =>
+                TypedResults.Ok(new { updated = await service.MarkAllReadAsync(query, request.IsRead, ct) }))
+            .WithName("MarkAllBookmarksRead")
+            .RequireRateLimiting("writes");
+
         return group;
     }
 }

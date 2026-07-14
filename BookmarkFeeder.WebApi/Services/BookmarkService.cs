@@ -21,6 +21,12 @@ public interface IBookmarkService
     Task<(BookmarkDto? Dto, BookmarkError Error)> UpdateAsync(Guid id, UpdateBookmarkRequest request, CancellationToken ct = default);
     Task<bool> DeleteAsync(Guid id, CancellationToken ct = default);
     Task<BookmarkDto?> SetReadAsync(Guid id, bool isRead, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets the read state of every bookmark matching <paramref name="query"/>'s filters, across
+    /// all pages. Returns the number of rows whose state actually changed.
+    /// </summary>
+    Task<int> MarkAllReadAsync(BookmarkQuery query, bool isRead, CancellationToken ct = default);
     Task<BatchResultDto> CreateBatchAsync(BatchCreateRequest request, CancellationToken ct = default);
 }
 
@@ -40,76 +46,7 @@ public class BookmarkService(IDbContextFactory<BookmarkDbContext> contextFactory
                 .ThenInclude(bt => bt.Tag);
 
         var searchTerm = query.Search?.Trim();
-        if (!string.IsNullOrWhiteSpace(searchTerm))
-        {
-            // Matches the weighted tsvector (title/description/url) or a tag name. Tag names are
-            // deliberately outside the vector, so they contribute no rank — a tag-only hit sorts
-            // below any text hit.
-            //
-            // The two are UNIONed rather than OR'd. A disjunction spanning tables
-            // (SearchVector @@ q OR EXISTS (tag...)) makes the planner give up on the GIN index
-            // and sequentially scan every bookmark — which would defeat the index this search is
-            // built on. UNION lets each branch use its own index (measured on 434 rows: plan cost
-            // 9678 -> 59). Matching on ids keeps the Includes on the outer query.
-            //
-            // websearch_to_tsquery parses user syntax ("quoted", OR, -negated) and tolerates junk
-            // rather than throwing, so raw input passes straight through.
-            var textMatches = context.Bookmarks
-                .Where(b => b.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", searchTerm)))
-                .Select(b => b.Id);
-
-            var tagMatches = context.Bookmarks
-                .Where(b => b.BookmarkTags.Any(bt => EF.Functions.ILike(bt.Tag.Name, $"%{searchTerm}%")))
-                .Select(b => b.Id);
-
-            var matchingIds = textMatches.Union(tagMatches);
-            q = q.Where(b => matchingIds.Contains(b.Id));
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.Tags))
-        {
-            var tagNames = SplitCsv(query.Tags).Select(t => t.ToLowerInvariant()).ToList();
-            if (tagNames.Count > 0)
-            {
-                q = q.Where(b => b.BookmarkTags.Any(bt => tagNames.Contains(bt.Tag.NormalizedName)));
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.Categories))
-        {
-            var categoryIds = SplitCsv(query.Categories)
-                .Select(c => Guid.TryParse(c, out var g) ? g : (Guid?)null)
-                .Where(g => g.HasValue)
-                .Select(g => g!.Value)
-                .ToList();
-            if (categoryIds.Count > 0)
-            {
-                q = q.Where(b => b.CategoryId != null && categoryIds.Contains(b.CategoryId.Value));
-            }
-        }
-
-        if (!string.IsNullOrWhiteSpace(query.SourceFolder))
-        {
-            var folder = query.SourceFolder.Trim();
-            q = q.Where(b => b.SourceFolder != null && b.SourceFolder.StartsWith(folder));
-        }
-
-        if (query.IsRead.HasValue)
-        {
-            q = q.Where(b => b.IsRead == query.IsRead.Value);
-        }
-
-        if (query.DateFrom.HasValue)
-        {
-            var from = DateTime.SpecifyKind(query.DateFrom.Value, DateTimeKind.Utc);
-            q = q.Where(b => b.DateAdded >= from);
-        }
-
-        if (query.DateTo.HasValue)
-        {
-            var to = DateTime.SpecifyKind(query.DateTo.Value, DateTimeKind.Utc);
-            q = q.Where(b => b.DateAdded <= to);
-        }
+        q = ApplyFilters(context, q, query, searchTerm);
 
         var total = await q.CountAsync(ct);
 
@@ -337,6 +274,112 @@ public class BookmarkService(IDbContextFactory<BookmarkDbContext> contextFactory
             .Include(b => b.Category)
             .Include(b => b.BookmarkTags)
                 .ThenInclude(bt => bt.Tag);
+
+    public async Task<int> MarkAllReadAsync(BookmarkQuery query, bool isRead, CancellationToken ct = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(ct);
+
+        // No Includes: ExecuteUpdate cannot use them and the navigations aren't needed. Page and
+        // sort are ignored — the action spans every match by design, and ordering an update is
+        // meaningless. The soft-delete query filter still applies automatically.
+        var q = ApplyFilters(context, context.Bookmarks, query, query.Search?.Trim());
+
+        // Skip rows already in the target state so their DateModified isn't churned. The return
+        // value is therefore rows actually changed, which can be lower than the matched total.
+        q = q.Where(b => b.IsRead != isRead);
+
+        var now = DateTime.UtcNow;
+        return await q.ExecuteUpdateAsync(
+            s => s.SetProperty(b => b.IsRead, isRead)
+                  .SetProperty(b => b.DateModified, now),
+            ct);
+    }
+
+    /// <summary>
+    /// Applies every narrowing filter in <paramref name="query"/> (search, tags, categories,
+    /// source folder, read state, dates). Paging and sorting are deliberately excluded.
+    /// </summary>
+    /// <remarks>
+    /// Shared by the list endpoint and the bulk mark-read endpoint on purpose: if the two composed
+    /// their filters separately, the set marked read could drift from the set shown on screen.
+    /// Any filter added here must therefore make sense for both.
+    /// </remarks>
+    private static IQueryable<Bookmark> ApplyFilters(
+        BookmarkDbContext context, IQueryable<Bookmark> q, BookmarkQuery query, string? searchTerm)
+    {
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            // Matches the weighted tsvector (title/description/url) or a tag name. Tag names are
+            // deliberately outside the vector, so they contribute no rank — a tag-only hit sorts
+            // below any text hit.
+            //
+            // The two are UNIONed rather than OR'd. A disjunction spanning tables
+            // (SearchVector @@ q OR EXISTS (tag...)) makes the planner give up on the GIN index
+            // and sequentially scan every bookmark — which would defeat the index this search is
+            // built on. UNION lets each branch use its own index (measured on 434 rows: plan cost
+            // 9678 -> 59). Matching on ids keeps the Includes on the outer query.
+            //
+            // websearch_to_tsquery parses user syntax ("quoted", OR, -negated) and tolerates junk
+            // rather than throwing, so raw input passes straight through.
+            var textMatches = context.Bookmarks
+                .Where(b => b.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", searchTerm)))
+                .Select(b => b.Id);
+
+            var tagMatches = context.Bookmarks
+                .Where(b => b.BookmarkTags.Any(bt => EF.Functions.ILike(bt.Tag.Name, $"%{searchTerm}%")))
+                .Select(b => b.Id);
+
+            var matchingIds = textMatches.Union(tagMatches);
+            q = q.Where(b => matchingIds.Contains(b.Id));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Tags))
+        {
+            var tagNames = SplitCsv(query.Tags).Select(t => t.ToLowerInvariant()).ToList();
+            if (tagNames.Count > 0)
+            {
+                q = q.Where(b => b.BookmarkTags.Any(bt => tagNames.Contains(bt.Tag.NormalizedName)));
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Categories))
+        {
+            var categoryIds = SplitCsv(query.Categories)
+                .Select(c => Guid.TryParse(c, out var g) ? g : (Guid?)null)
+                .Where(g => g.HasValue)
+                .Select(g => g!.Value)
+                .ToList();
+            if (categoryIds.Count > 0)
+            {
+                q = q.Where(b => b.CategoryId != null && categoryIds.Contains(b.CategoryId.Value));
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.SourceFolder))
+        {
+            var folder = query.SourceFolder.Trim();
+            q = q.Where(b => b.SourceFolder != null && b.SourceFolder.StartsWith(folder));
+        }
+
+        if (query.IsRead.HasValue)
+        {
+            q = q.Where(b => b.IsRead == query.IsRead.Value);
+        }
+
+        if (query.DateFrom.HasValue)
+        {
+            var from = DateTime.SpecifyKind(query.DateFrom.Value, DateTimeKind.Utc);
+            q = q.Where(b => b.DateAdded >= from);
+        }
+
+        if (query.DateTo.HasValue)
+        {
+            var to = DateTime.SpecifyKind(query.DateTo.Value, DateTimeKind.Utc);
+            q = q.Where(b => b.DateAdded <= to);
+        }
+
+        return q;
+    }
 
     private static IQueryable<Bookmark> ApplySort(
         IQueryable<Bookmark> q, string? sortBy, string? sortOrder, string? searchTerm)
