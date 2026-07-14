@@ -7,7 +7,6 @@ import {
 } from 'react'
 
 export interface AppConfig {
-  apiBaseUrl: string
   apiKey: string
 }
 
@@ -20,7 +19,6 @@ interface ConfigContextValue extends AppConfig {
 const STORAGE_KEY = 'bookmarkfeeder.config'
 
 const defaults: AppConfig = {
-  apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
   apiKey: import.meta.env.VITE_API_KEY ?? '',
 }
 
@@ -50,11 +48,11 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const clear = useCallback(() => {
-    setConfigState({ apiBaseUrl: '', apiKey: '' })
+    setConfigState({ apiKey: '' })
     localStorage.removeItem(STORAGE_KEY)
   }, [])
 
-  const isConfigured = Boolean(config.apiBaseUrl && config.apiKey)
+  const isConfigured = Boolean(config.apiKey)
 
   return (
     <ConfigContext.Provider value={{ ...config, isConfigured, setConfig, clear }}>

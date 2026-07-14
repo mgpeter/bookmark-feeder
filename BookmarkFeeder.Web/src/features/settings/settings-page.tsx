@@ -15,18 +15,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 export function SettingsPage() {
-  const { apiBaseUrl, apiKey, setConfig } = useConfig()
+  const { apiKey, setConfig } = useConfig()
   const navigate = useNavigate()
-  const [url, setUrl] = useState(apiBaseUrl)
   const [key, setKey] = useState(apiKey)
   const [testing, setTesting] = useState(false)
 
   async function testConnection() {
     setTesting(true)
     try {
-      const res = await fetch(`${url.replace(/\/+$/, '')}/tags`, {
-        headers: { 'X-API-Key': key },
-      })
+      // Same-origin call through the gateway; only the key varies.
+      const res = await fetch('/api/tags', { headers: { 'X-API-Key': key } })
       if (res.ok) toast.success('Connection successful')
       else if (res.status === 401) toast.error('Unauthorized — check the API key')
       else toast.error(`Server responded with ${res.status}`)
@@ -38,7 +36,7 @@ export function SettingsPage() {
   }
 
   function save() {
-    setConfig({ apiBaseUrl: url.trim(), apiKey: key.trim() })
+    setConfig({ apiKey: key.trim() })
     toast.success('Settings saved')
     navigate('/')
   }
@@ -52,23 +50,15 @@ export function SettingsPage() {
 
       <Card className="max-w-xl">
         <CardHeader>
-          <CardTitle>API connection</CardTitle>
+          <CardTitle>API key</CardTitle>
           <CardDescription>
-            The key is stored locally in this browser and sent as the
+            The app talks to the API at this site's own origin. Your key is stored
+            locally in this browser and sent as the
             <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">X-API-Key</code>
             header.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="apiBaseUrl">API base URL</Label>
-            <Input
-              id="apiBaseUrl"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://localhost:7042/api"
-            />
-          </div>
           <div className="space-y-2">
             <Label htmlFor="apiKey">API key</Label>
             <Input
@@ -81,14 +71,10 @@ export function SettingsPage() {
           </div>
         </CardContent>
         <CardFooter className="gap-2">
-          <Button onClick={save} disabled={!url || !key}>
+          <Button onClick={save} disabled={!key}>
             Save
           </Button>
-          <Button
-            variant="outline"
-            onClick={testConnection}
-            disabled={!url || !key || testing}
-          >
+          <Button variant="outline" onClick={testConnection} disabled={!key || testing}>
             {testing ? 'Testing…' : 'Test connection'}
           </Button>
         </CardFooter>

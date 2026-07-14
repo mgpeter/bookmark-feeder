@@ -21,11 +21,9 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler): void {
 }
 
 function buildUrl(path: string, params?: Record<string, unknown>): string {
-  const { apiBaseUrl } = getConfig()
-  if (!apiBaseUrl) {
-    throw new ApiError(0, 'API base URL is not configured. Open Settings to set it.')
-  }
-  const url = new URL(apiBaseUrl.replace(/\/+$/, '') + path)
+  // The app is served from the same origin as the API (behind the gateway), so all
+  // requests are relative to the current origin under the /api prefix.
+  const url = new URL('/api' + path, window.location.origin)
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null && value !== '') {

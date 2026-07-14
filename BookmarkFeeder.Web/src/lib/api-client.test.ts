@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/config/config-context', () => ({
-  getConfig: () => ({ apiBaseUrl: 'https://api.test/api', apiKey: 'secret-key' }),
+  getConfig: () => ({ apiKey: 'secret-key' }),
 }))
 
 import { api, setUnauthorizedHandler } from './api-client'
@@ -11,7 +11,7 @@ describe('api-client', () => {
     vi.restoreAllMocks()
   })
 
-  it('prefixes the base URL, serializes params, and attaches X-API-Key', async () => {
+  it('builds a relative same-origin /api URL, serializes params, and attaches X-API-Key', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), {
         status: 200,
@@ -23,7 +23,13 @@ describe('api-client', () => {
     await api.get('/bookmarks', { page: 2, search: 'react', empty: '' })
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('https://api.test/api/bookmarks?page=2&search=react')
+    const parsed = new URL(url)
+    // Same origin as the app, path prefixed with /api.
+    expect(parsed.origin).toBe(window.location.origin)
+    expect(parsed.pathname).toBe('/api/bookmarks')
+    expect(parsed.searchParams.get('page')).toBe('2')
+    expect(parsed.searchParams.get('search')).toBe('react')
+    expect(parsed.searchParams.get('empty')).toBeNull()
     expect((init.headers as Record<string, string>)['X-API-Key']).toBe('secret-key')
     expect(init.method).toBe('GET')
   })
