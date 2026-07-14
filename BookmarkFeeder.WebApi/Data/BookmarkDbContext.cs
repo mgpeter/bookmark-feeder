@@ -32,6 +32,38 @@ public class BookmarkDbContext : DbContext
             entity.HasIndex(e => e.IsRead);
             entity.HasQueryFilter(e => !e.IsDeleted); // Global query filter for soft delete
 
+            // tsvector is a PostgreSQL type: the InMemory provider used by the unit tests cannot
+            // map it and would fail model validation, so the column only exists on Npgsql. The
+            // Testcontainers suite is what actually exercises it.
+            if (Database.IsNpgsql())
+            {
+                // Weighted full-text vector, maintained by PostgreSQL. Written as explicit SQL
+                // because Npgsql's HasGeneratedTsVectorColumn produces an UNWEIGHTED to_tsvector
+                // over the columns and offers no way to setweight — and the weights are what make
+                // a title hit outrank a url hit. Ranking depends on the A/B/C letters below.
+                //
+                // The Url is split into words first: to_tsvector's parser would otherwise treat a
+                // URL as host/url_path tokens ('wolverine.netlify.app', '/docs'), so searching
+                // "wolverine" would not match https://wolverine.netlify.app — a regression against
+                // the ILIKE substring search this replaces. Punctuation -> spaces makes each
+                // segment its own lexeme.
+                entity.Property(e => e.SearchVector)
+                      .HasColumnType("tsvector")
+                      .HasComputedColumnSql(
+                          """
+                          setweight(to_tsvector('english', coalesce("Title", '')), 'A') ||
+                          setweight(to_tsvector('english', coalesce("Description", '')), 'B') ||
+                          setweight(to_tsvector('english', regexp_replace(coalesce("Url", ''), '[^a-zA-Z0-9]+', ' ', 'g')), 'C')
+                          """,
+                          stored: true);
+
+                entity.HasIndex(e => e.SearchVector).HasMethod("gin");
+            }
+            else
+            {
+                entity.Ignore(e => e.SearchVector);
+            }
+
             entity.HasOne(e => e.Category)
                   .WithMany(c => c.Bookmarks)
                   .HasForeignKey(e => e.CategoryId)
