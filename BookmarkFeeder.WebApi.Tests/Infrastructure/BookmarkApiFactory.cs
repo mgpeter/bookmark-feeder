@@ -54,6 +54,13 @@ public class BookmarkApiFactory : WebApplicationFactory<Program>
         return client;
     }
 
+    public HttpClient CreateAuthenticatedClient(WebApplicationFactoryClientOptions options)
+    {
+        var client = CreateClient(options);
+        client.DefaultRequestHeaders.Add("X-API-Key", TestApiKey);
+        return client;
+    }
+
     public BookmarkDbContext CreateContext() =>
         Services.GetRequiredService<IDbContextFactory<BookmarkDbContext>>().CreateDbContext();
 }
