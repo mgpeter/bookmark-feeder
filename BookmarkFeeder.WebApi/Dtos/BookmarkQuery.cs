@@ -6,7 +6,10 @@ public class BookmarkQuery
     public int? Page { get; set; }
     public int? PageSize { get; set; }
 
-    /// <summary>Free-text search over title, url and description.</summary>
+    /// <summary>
+    /// Full-text search over title, url and description (ranked), or an exact-ish tag-name match.
+    /// Supports websearch syntax: "quoted phrase", OR, -negated.
+    /// </summary>
     public string? Search { get; set; }
 
     /// <summary>Comma-separated tag names; matches bookmarks having ANY of them.</summary>
@@ -22,7 +25,10 @@ public class BookmarkQuery
     public DateTime? DateFrom { get; set; }
     public DateTime? DateTo { get; set; }
 
-    /// <summary>One of: dateAdded, dateModified, title, url.</summary>
+    /// <summary>
+    /// One of: relevance, dateAdded, dateModified, title, url.
+    /// Defaults to relevance when <see cref="Search"/> is set, otherwise dateAdded.
+    /// </summary>
     public string? SortBy { get; set; }
 
     /// <summary>asc or desc.</summary>

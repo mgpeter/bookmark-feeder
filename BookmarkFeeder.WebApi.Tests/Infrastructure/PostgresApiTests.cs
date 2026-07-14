@@ -17,21 +17,8 @@ public class PostgresApiTests(PostgresApiFactory factory) : IClassFixture<Postgr
         return (await response.Content.ReadFromJsonAsync<BookmarkDto>())!;
     }
 
-    [Fact]
-    public async Task Search_IsCaseInsensitive_ViaILike()
-    {
-        var client = factory.CreateAuthenticatedClient();
-        var token = Guid.NewGuid().ToString("N")[..10].ToUpperInvariant();
-        var url = $"https://s-{token}.example.com";
-
-        await CreateBookmark(client, new CreateBookmarkRequest(url, $"Guide about {token}", null, null, null, null, null));
-
-        // Title holds an UPPERCASE token; searching lowercase must still match (ILIKE, Postgres-only).
-        var page = await client.GetFromJsonAsync<PagedResult<BookmarkDto>>(
-            $"/api/bookmarks?search={token.ToLowerInvariant()}");
-
-        page!.Data.Should().ContainSingle(b => b.Url == url);
-    }
+    // Search behaviour now lives in SearchQueryTests (tsvector-backed); case-insensitivity is
+    // still pinned there by Search_IsCaseInsensitive.
 
     [Fact]
     public async Task Batch_SkipsDuplicate_EvenWhenExistingRowIsSoftDeleted()

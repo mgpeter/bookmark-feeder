@@ -39,13 +39,31 @@ public class BookmarkService(IDbContextFactory<BookmarkDbContext> contextFactory
             .Include(b => b.BookmarkTags)
                 .ThenInclude(bt => bt.Tag);
 
-        if (!string.IsNullOrWhiteSpace(query.Search))
+        var searchTerm = query.Search?.Trim();
+        if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            var pattern = $"%{query.Search.Trim()}%";
-            q = q.Where(b =>
-                EF.Functions.ILike(b.Title, pattern) ||
-                EF.Functions.ILike(b.Url, pattern) ||
-                (b.Description != null && EF.Functions.ILike(b.Description, pattern)));
+            // Matches the weighted tsvector (title/description/url) or a tag name. Tag names are
+            // deliberately outside the vector, so they contribute no rank — a tag-only hit sorts
+            // below any text hit.
+            //
+            // The two are UNIONed rather than OR'd. A disjunction spanning tables
+            // (SearchVector @@ q OR EXISTS (tag...)) makes the planner give up on the GIN index
+            // and sequentially scan every bookmark — which would defeat the index this search is
+            // built on. UNION lets each branch use its own index (measured on 434 rows: plan cost
+            // 9678 -> 59). Matching on ids keeps the Includes on the outer query.
+            //
+            // websearch_to_tsquery parses user syntax ("quoted", OR, -negated) and tolerates junk
+            // rather than throwing, so raw input passes straight through.
+            var textMatches = context.Bookmarks
+                .Where(b => b.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", searchTerm)))
+                .Select(b => b.Id);
+
+            var tagMatches = context.Bookmarks
+                .Where(b => b.BookmarkTags.Any(bt => EF.Functions.ILike(bt.Tag.Name, $"%{searchTerm}%")))
+                .Select(b => b.Id);
+
+            var matchingIds = textMatches.Union(tagMatches);
+            q = q.Where(b => matchingIds.Contains(b.Id));
         }
 
         if (!string.IsNullOrWhiteSpace(query.Tags))
@@ -95,7 +113,7 @@ public class BookmarkService(IDbContextFactory<BookmarkDbContext> contextFactory
 
         var total = await q.CountAsync(ct);
 
-        q = ApplySort(q, query.SortBy, query.SortOrder);
+        q = ApplySort(q, query.SortBy, query.SortOrder, searchTerm);
 
         var items = await q
             .Skip((page - 1) * pageSize)
@@ -320,10 +338,32 @@ public class BookmarkService(IDbContextFactory<BookmarkDbContext> contextFactory
             .Include(b => b.BookmarkTags)
                 .ThenInclude(bt => bt.Tag);
 
-    private static IQueryable<Bookmark> ApplySort(IQueryable<Bookmark> q, string? sortBy, string? sortOrder)
+    private static IQueryable<Bookmark> ApplySort(
+        IQueryable<Bookmark> q, string? sortBy, string? sortOrder, string? searchTerm)
     {
         var descending = !string.Equals(sortOrder, "asc", StringComparison.OrdinalIgnoreCase);
-        return (sortBy?.ToLowerInvariant()) switch
+        var hasSearch = !string.IsNullOrWhiteSpace(searchTerm);
+
+        // A search with no explicit sort ranks by relevance rather than recency.
+        var effective = string.IsNullOrWhiteSpace(sortBy) && hasSearch
+            ? "relevance"
+            : sortBy?.ToLowerInvariant();
+
+        // "relevance" is only meaningful with a term to rank against; otherwise fall through
+        // to the date default rather than failing the request.
+        if (effective == "relevance" && hasSearch)
+        {
+            var ranked = descending
+                ? q.OrderByDescending(b => b.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english", searchTerm!)))
+                : q.OrderBy(b => b.SearchVector.Rank(EF.Functions.WebSearchToTsQuery("english", searchTerm!)));
+
+            // Identically-shaped matches score identically, so ties are the norm, not the
+            // exception. Postgres may return tied rows in any order, which would let paging
+            // repeat or skip rows between requests; Id makes the order total.
+            return ranked.ThenByDescending(b => b.DateAdded).ThenBy(b => b.Id);
+        }
+
+        return effective switch
         {
             "title" => descending ? q.OrderByDescending(b => b.Title) : q.OrderBy(b => b.Title),
             "url" => descending ? q.OrderByDescending(b => b.Url) : q.OrderBy(b => b.Url),
