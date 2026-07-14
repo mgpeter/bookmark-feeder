@@ -36,6 +36,10 @@ public class BookmarkApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("RateLimiting:Writes", "1000000");
         builder.UseSetting("RateLimiting:Sync", "1000000");
 
+        // No background favicon fetching in tests — it would make real HTTP requests to the
+        // seeded bookmarks' sites. The worker is tested directly in FaviconBackgroundServiceTests.
+        builder.UseSetting("Favicon:Enabled", "false");
+
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IDbContextFactory<BookmarkDbContext>>();

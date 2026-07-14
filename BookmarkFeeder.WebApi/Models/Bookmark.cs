@@ -8,7 +8,16 @@ public class Bookmark
     public string Url { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    /// <summary>The resolved remote favicon URL, discovered from the site's own origin.</summary>
     public string? FaviconUrl { get; set; }
+
+    /// <summary>
+    /// When favicon discovery was last attempted, successful or not. Null means never tried,
+    /// which is what the backfill looks for; setting it on failure stops a site with no
+    /// discoverable favicon from being re-fetched forever.
+    /// </summary>
+    public DateTime? FaviconFetchedAt { get; set; }
+
     public string? SourceFolder { get; set; }
     public bool IsRead { get; set; }
     public DateTime DateAdded { get; set; }

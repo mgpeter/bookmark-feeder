@@ -45,6 +45,27 @@ builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<ISavedSearchService, SavedSearchService>();
 
+// Favicon enrichment: a queue the API writes to and a background worker that drains it.
+// Opt-out via Favicon:Enabled=false — the test suites turn it off so they never reach the
+// network, and self-hosters can disable the outbound fetching entirely.
+builder.Services.AddSingleton<IFaviconQueue>(_ => new FaviconQueue());
+builder.Services.AddScoped<IFaviconResolver, FaviconResolver>();
+builder.Services.AddHttpClient(FaviconResolver.HttpClientName, client =>
+{
+    // Short: a slow site must not occupy a worker slot for long.
+    client.Timeout = TimeSpan.FromSeconds(10);
+    // Some sites serve no icon markup to unknown agents.
+    client.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (compatible; BookmarkFeeder/1.0; +https://github.com/bookmarkfeeder)");
+    // A favicon is small; refuse to buffer a page that isn't.
+    client.MaxResponseContentBufferSize = 2 * 1024 * 1024;
+});
+
+if (builder.Configuration.GetValue("Favicon:Enabled", true))
+{
+    builder.Services.AddHostedService<FaviconBackgroundService>();
+}
+
 // FluentValidation validators.
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
 

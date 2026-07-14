@@ -30,7 +30,9 @@ public interface IBookmarkService
     Task<BatchResultDto> CreateBatchAsync(BatchCreateRequest request, CancellationToken ct = default);
 }
 
-public class BookmarkService(IDbContextFactory<BookmarkDbContext> contextFactory) : IBookmarkService
+public class BookmarkService(
+    IDbContextFactory<BookmarkDbContext> contextFactory,
+    IFaviconQueue faviconQueue) : IBookmarkService
 {
     public async Task<BookmarkListResult> GetBookmarksAsync(BookmarkQuery query, CancellationToken ct = default)
     {
@@ -150,6 +152,11 @@ public class BookmarkService(IDbContextFactory<BookmarkDbContext> contextFactory
 
         context.Bookmarks.Add(bookmark);
         await context.SaveChangesAsync(ct);
+
+        // After the save, so the worker can never race the row it is about to load. Non-blocking
+        // and ignorable: a dropped id keeps FaviconFetchedAt null and the startup backfill
+        // retries it. Favicon enrichment must not be able to fail creating a bookmark.
+        faviconQueue.TryEnqueue(bookmark.Id);
 
         return ((await GetByIdAsync(bookmark.Id, ct))!, BookmarkError.None);
     }
@@ -304,6 +311,14 @@ public class BookmarkService(IDbContextFactory<BookmarkDbContext> contextFactory
         if (created.Count > 0)
         {
             await context.SaveChangesAsync(ct);
+
+            // Only what was actually created — a skipped duplicate already exists and has either
+            // been enriched or recorded as unenrichable. A 260-bookmark sync enqueues 260 ids and
+            // returns immediately; the worker drains them slowly in the background.
+            foreach (var item in created)
+            {
+                faviconQueue.TryEnqueue(item.Id);
+            }
         }
 
         var summary = new BatchSummary(items.Count, created.Count, skipped.Count, errors.Count);
