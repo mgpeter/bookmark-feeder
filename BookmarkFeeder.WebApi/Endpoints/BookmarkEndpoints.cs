@@ -30,12 +30,14 @@ public static class BookmarkEndpoints
                 };
             })
             .AddEndpointFilter<ValidationFilter<CreateBookmarkRequest>>()
-            .WithName("CreateBookmark");
+            .WithName("CreateBookmark")
+            .RequireRateLimiting("writes");
 
         group.MapPost("/batch", async (BatchCreateRequest request, IBookmarkService service, CancellationToken ct) =>
                 TypedResults.Ok(await service.CreateBatchAsync(request, ct)))
             .AddEndpointFilter<ValidationFilter<BatchCreateRequest>>()
-            .WithName("CreateBookmarksBatch");
+            .WithName("CreateBookmarksBatch")
+            .RequireRateLimiting("sync");
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateBookmarkRequest request, IBookmarkService service, CancellationToken ct) =>
             {
@@ -47,21 +49,24 @@ public static class BookmarkEndpoints
                 return dto is null ? Results.NotFound() : Results.Ok(dto);
             })
             .AddEndpointFilter<ValidationFilter<UpdateBookmarkRequest>>()
-            .WithName("UpdateBookmark");
+            .WithName("UpdateBookmark")
+            .RequireRateLimiting("writes");
 
         group.MapDelete("/{id:guid}", async (Guid id, IBookmarkService service, CancellationToken ct) =>
             {
                 var deleted = await service.DeleteAsync(id, ct);
                 return deleted ? Results.NoContent() : Results.NotFound();
             })
-            .WithName("DeleteBookmark");
+            .WithName("DeleteBookmark")
+            .RequireRateLimiting("writes");
 
         group.MapPatch("/{id:guid}/read", async (Guid id, MarkReadRequest request, IBookmarkService service, CancellationToken ct) =>
             {
                 var dto = await service.SetReadAsync(id, request.IsRead, ct);
                 return dto is null ? Results.NotFound() : Results.Ok(dto);
             })
-            .WithName("MarkBookmarkRead");
+            .WithName("MarkBookmarkRead")
+            .RequireRateLimiting("writes");
 
         return group;
     }

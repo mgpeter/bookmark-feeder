@@ -20,7 +20,8 @@ public static class TagEndpoints
                     : Results.Created($"/api/tags/{dto!.Id}", dto);
             })
             .AddEndpointFilter<ValidationFilter<CreateTagRequest>>()
-            .WithName("CreateTag");
+            .WithName("CreateTag")
+            .RequireRateLimiting("writes");
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateTagRequest request, ITagService service, CancellationToken ct) =>
             {
@@ -33,14 +34,16 @@ public static class TagEndpoints
                 };
             })
             .AddEndpointFilter<ValidationFilter<UpdateTagRequest>>()
-            .WithName("UpdateTag");
+            .WithName("UpdateTag")
+            .RequireRateLimiting("writes");
 
         group.MapDelete("/{id:guid}", async (Guid id, ITagService service, CancellationToken ct) =>
             {
                 var deleted = await service.DeleteAsync(id, ct);
                 return deleted ? Results.NoContent() : Results.NotFound();
             })
-            .WithName("DeleteTag");
+            .WithName("DeleteTag")
+            .RequireRateLimiting("writes");
 
         return group;
     }

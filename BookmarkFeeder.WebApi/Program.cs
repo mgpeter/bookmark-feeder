@@ -3,6 +3,7 @@ using BookmarkFeeder.WebApi.Data;
 using BookmarkFeeder.WebApi.Endpoints;
 using BookmarkFeeder.WebApi.Filters;
 using BookmarkFeeder.WebApi.Services;
+using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
@@ -87,6 +88,30 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Per-endpoint rate limiting, partitioned by API key (fallback to forwarded client IP).
+// Limits are config-overridable (RateLimiting:{Sync,Writes,Reads}); defaults below.
+var readsLimit = builder.Configuration.GetValue<int?>("RateLimiting:Reads") ?? 200;
+var writesLimit = builder.Configuration.GetValue<int?>("RateLimiting:Writes") ?? 100;
+var syncLimit = builder.Configuration.GetValue<int?>("RateLimiting:Sync") ?? 5;
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, _) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+        {
+            context.HttpContext.Response.Headers.RetryAfter =
+                ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+        }
+        await ValueTask.CompletedTask;
+    };
+
+    options.AddPolicy("reads", ctx => FixedWindow(ClientPartitionKey(ctx), readsLimit));
+    options.AddPolicy("writes", ctx => FixedWindow(ClientPartitionKey(ctx), writesLimit));
+    options.AddPolicy("sync", ctx => FixedWindow(ClientPartitionKey(ctx), syncLimit));
+});
+
 var app = builder.Build();
 
 // Must run first so downstream middleware sees the gateway-forwarded scheme/IP.
@@ -118,6 +143,8 @@ if (app.Configuration.GetValue<bool>("Https:Redirect"))
 // via the gateway and does not rely on it.
 app.UseCors();
 
+app.UseRateLimiter();
+
 app.MapDefaultEndpoints();
 
 // Fail fast if the API is exposed without an API key outside development. Skipped during
@@ -129,8 +156,11 @@ if (!IsDesignTimeBuild() && !EF.IsDesignTime && !app.Environment.IsDevelopment()
         "Authentication:ApiKey must be configured (user-secrets, environment, or Aspire parameter) outside Development.");
 }
 
-// All /api endpoints require the X-API-Key header.
-var api = app.MapGroup("/api").AddEndpointFilter<ApiKeyEndpointFilter>();
+// All /api endpoints require the X-API-Key header. "reads" is the group-default rate-limit
+// policy; mutating and batch endpoints override it (see the endpoint definitions).
+var api = app.MapGroup("/api")
+    .AddEndpointFilter<ApiKeyEndpointFilter>()
+    .RequireRateLimiting("reads");
 api.MapGroup("/bookmarks").MapBookmarkEndpoints().WithTags("Bookmarks");
 api.MapGroup("/tags").MapTagEndpoints().WithTags("Tags");
 api.MapGroup("/categories").MapCategoryEndpoints().WithTags("Categories");
@@ -142,6 +172,21 @@ if (!IsDesignTimeBuild())
 }
 
 app.Run();
+
+static RateLimitPartition<string> FixedWindow(string partitionKey, int permitLimit) =>
+    RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
+    {
+        PermitLimit = permitLimit,
+        Window = TimeSpan.FromMinutes(1),
+    });
+
+static string ClientPartitionKey(HttpContext context)
+{
+    var key = context.Request.Headers[ApiKeyEndpointFilter.HeaderName].ToString();
+    return string.IsNullOrEmpty(key)
+        ? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous"
+        : key;
+}
 
 static bool IsDesignTimeBuild()
 {

@@ -20,7 +20,8 @@ public static class CategoryEndpoints
                     : Results.Created($"/api/categories/{dto!.Id}", dto);
             })
             .AddEndpointFilter<ValidationFilter<CreateCategoryRequest>>()
-            .WithName("CreateCategory");
+            .WithName("CreateCategory")
+            .RequireRateLimiting("writes");
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateCategoryRequest request, ICategoryService service, CancellationToken ct) =>
             {
@@ -34,7 +35,8 @@ public static class CategoryEndpoints
                 };
             })
             .AddEndpointFilter<ValidationFilter<UpdateCategoryRequest>>()
-            .WithName("UpdateCategory");
+            .WithName("UpdateCategory")
+            .RequireRateLimiting("writes");
 
         group.MapDelete("/{id:guid}", async (Guid id, Guid? reassignTo, ICategoryService service, CancellationToken ct) =>
             {
@@ -46,7 +48,8 @@ public static class CategoryEndpoints
                     _ => Results.NoContent()
                 };
             })
-            .WithName("DeleteCategory");
+            .WithName("DeleteCategory")
+            .RequireRateLimiting("writes");
 
         return group;
     }

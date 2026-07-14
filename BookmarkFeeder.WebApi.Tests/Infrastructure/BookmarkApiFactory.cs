@@ -30,6 +30,12 @@ public class BookmarkApiFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Development");
         builder.UseSetting("Authentication:ApiKey", TestApiKey);
 
+        // Effectively disable rate limiting for the general test suite; the dedicated
+        // RateLimitTests override these with low values to exercise 429 behavior.
+        builder.UseSetting("RateLimiting:Reads", "1000000");
+        builder.UseSetting("RateLimiting:Writes", "1000000");
+        builder.UseSetting("RateLimiting:Sync", "1000000");
+
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IDbContextFactory<BookmarkDbContext>>();

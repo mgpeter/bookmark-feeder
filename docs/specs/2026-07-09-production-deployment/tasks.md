@@ -19,11 +19,11 @@
   - [x] 3.3 `/health` + `/alive` mapped in all environments; CORS commented as extension-only
   - [x] 3.4 Verify all tests pass (60/60)
 
-- [ ] 4. Per-endpoint rate limiting
-  - [ ] 4.1 Write integration tests: exceeding batch/write limits → `429` + `Retry-After`; reads under the limit succeed
-  - [ ] 4.2 `AddRateLimiter` with named policies (`sync`, `writes`, `reads`) partitioned by `X-API-Key` (fallback to forwarded IP)
-  - [ ] 4.3 Apply `RequireRateLimiting` to the endpoint groups; `UseRateLimiter`; set `Retry-After` in `OnRejected`
-  - [ ] 4.4 Verify all tests pass
+- [x] 4. Per-endpoint rate limiting
+  - [x] 4.1 Integration tests: exceeding the write limit → `429` + `Retry-After`; reads stay 200 when writes are capped
+  - [x] 4.2 `AddRateLimiter` with config-driven fixed-window policies (`sync` 5, `writes` 100, `reads` 200) partitioned by `X-API-Key` (fallback to forwarded IP)
+  - [x] 4.3 Group-default `reads` + per-endpoint `writes`/`sync` overrides; `UseRateLimiter`; `Retry-After` in `OnRejected`
+  - [x] 4.4 Verify all tests pass (62/62)
 
 - [ ] 5. Testcontainers integration tests (real PostgreSQL)
   - [ ] 5.1 Add `Testcontainers.PostgreSql` + a Postgres-backed fixture (start container, `MigrateAsync`, WebApplicationFactory pointing at it)
