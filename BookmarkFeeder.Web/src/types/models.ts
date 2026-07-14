@@ -39,6 +39,31 @@ export interface PagedResult<T> {
   pagination: Pagination
 }
 
+export interface FacetItem {
+  id: string
+  name: string
+  count: number
+}
+
+export interface BookmarkFacets {
+  tags: FacetItem[]
+  categories: FacetItem[]
+}
+
+/** The bookmark list: a page plus, when something narrows it, the facet counts. */
+export interface BookmarkListResult extends PagedResult<Bookmark> {
+  /** Absent when no search or filter is active — there would be nothing to refine. */
+  facets?: BookmarkFacets | null
+}
+
+export interface SavedSearch {
+  id: string
+  name: string
+  /** The serialized filter string, e.g. "q=graphql&tags=dotnet". */
+  query: string
+  dateCreated: string
+}
+
 export interface Tag {
   id: string
   name: string
@@ -59,7 +84,7 @@ export interface Category {
   children: Category[]
 }
 
-export type SortBy = 'dateAdded' | 'dateModified' | 'title' | 'url'
+export type SortBy = 'relevance' | 'dateAdded' | 'dateModified' | 'title' | 'url'
 export type SortOrder = 'asc' | 'desc'
 
 export interface BookmarkQuery {

@@ -42,7 +42,13 @@ export function BookmarkFilters() {
   // Debounce the search box → URL param.
   useEffect(() => {
     const handle = setTimeout(() => {
-      if ((query.search ?? '') !== search) patch({ q: search || null })
+      if ((query.search ?? '') !== search) {
+        const updates: Record<string, string | null> = { q: search || null }
+        // Clearing the search leaves relevance with nothing to rank against, so drop
+        // it and fall back to the default sort.
+        if (!search && query.sortBy === 'relevance') updates.sort = null
+        patch(updates)
+      }
     }, 300)
     return () => clearTimeout(handle)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -207,6 +213,8 @@ export function BookmarkFilters() {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
+          {/* Only meaningful with a term to rank against. */}
+          {query.search && <SelectItem value="relevance">Relevance</SelectItem>}
           <SelectItem value="dateAdded">Date added</SelectItem>
           <SelectItem value="dateModified">Date modified</SelectItem>
           <SelectItem value="title">Title</SelectItem>
@@ -254,6 +262,8 @@ export function BookmarkFilters() {
               read: null,
               from: null,
               to: null,
+              // Relevance has nothing to rank against once the search is gone.
+              sort: null,
             })
           }
         >

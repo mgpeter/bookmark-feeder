@@ -8,17 +8,21 @@ export function useBookmarkQuery() {
   const [params, setParams] = useSearchParams()
 
   const read = params.get('read')
+  const search = params.get('q') || undefined
   const query: BookmarkQuery = {
     page: Number(params.get('page')) || 1,
     pageSize: Number(params.get('pageSize')) || 20,
-    search: params.get('q') || undefined,
+    search,
     tags: params.get('tags') || undefined,
     categories: params.get('categories') || undefined,
     sourceFolder: params.get('source') || undefined,
     dateFrom: params.get('from') || undefined,
     dateTo: params.get('to') || undefined,
     isRead: read === 'read' ? true : read === 'unread' ? false : undefined,
-    sortBy: (params.get('sort') as SortBy | null) ?? 'dateAdded',
+    // Searching ranks by relevance unless a sort is chosen; browsing is newest-first.
+    // This must be explicit: the UI always sends a sortBy, so the API's own relevance
+    // default would never get the chance to fire.
+    sortBy: (params.get('sort') as SortBy | null) ?? (search ? 'relevance' : 'dateAdded'),
     sortOrder: (params.get('dir') as SortOrder | null) ?? 'desc',
   }
 

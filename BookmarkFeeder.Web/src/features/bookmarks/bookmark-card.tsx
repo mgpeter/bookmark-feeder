@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import type { Bookmark } from '@/types/models'
 import { useDeleteBookmark, useMarkRead } from '@/api/bookmarks'
 import { FaviconAvatar } from '@/components/favicon-avatar'
+import { HighlightedText } from '@/components/highlighted-text'
 import { TagChip } from '@/components/tag-chip'
 import { CategoryBadge } from '@/components/category-badge'
 import { Button } from '@/components/ui/button'
@@ -40,9 +41,11 @@ interface Props {
   bookmark: Bookmark
   view: ViewMode
   onEdit?: (bookmark: Bookmark) => void
+  /** The active search term, so matches can be marked in the title/description. */
+  searchTerm?: string
 }
 
-export function BookmarkCard({ bookmark, view, onEdit }: Props) {
+export function BookmarkCard({ bookmark, view, onEdit, searchTerm }: Props) {
   const markRead = useMarkRead()
   const del = useDeleteBookmark()
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -136,7 +139,7 @@ export function BookmarkCard({ bookmark, view, onEdit }: Props) {
             rel="noreferrer"
             className="truncate font-medium hover:underline"
           >
-            {bookmark.title}
+            <HighlightedText text={bookmark.title} term={searchTerm} />
           </a>
           <div className="truncate text-xs text-muted-foreground">{hostname(bookmark.url)}</div>
         </div>
@@ -161,7 +164,7 @@ export function BookmarkCard({ bookmark, view, onEdit }: Props) {
             rel="noreferrer"
             className="line-clamp-2 font-medium leading-tight hover:underline"
           >
-            {bookmark.title}
+            <HighlightedText text={bookmark.title} term={searchTerm} />
           </a>
           <div className="mt-0.5 truncate text-xs text-muted-foreground">
             {hostname(bookmark.url)}
@@ -170,7 +173,9 @@ export function BookmarkCard({ bookmark, view, onEdit }: Props) {
         {menu}
       </div>
       {bookmark.description && (
-        <p className="line-clamp-2 text-sm text-muted-foreground">{bookmark.description}</p>
+        <p className="line-clamp-2 text-sm text-muted-foreground">
+          <HighlightedText text={bookmark.description} term={searchTerm} />
+        </p>
       )}
       <div className="mt-auto flex items-end justify-between gap-2">
         {meta}

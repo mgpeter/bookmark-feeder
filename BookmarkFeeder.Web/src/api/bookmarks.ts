@@ -8,9 +8,9 @@ import { api } from '@/lib/api-client'
 import { narrowingFilters } from '@/lib/bookmark-filters'
 import type {
   Bookmark,
+  BookmarkListResult,
   BookmarkQuery,
   CreateBookmarkRequest,
-  PagedResult,
   UpdateBookmarkRequest,
 } from '@/types/models'
 
@@ -20,7 +20,7 @@ export function useBookmarks(query: BookmarkQuery) {
   return useQuery({
     queryKey: [bookmarksKey, 'list', query],
     queryFn: () =>
-      api.get<PagedResult<Bookmark>>('/bookmarks', query as Record<string, unknown>),
+      api.get<BookmarkListResult>('/bookmarks', query as Record<string, unknown>),
     placeholderData: keepPreviousData,
   })
 }

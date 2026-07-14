@@ -62,13 +62,15 @@
 
   **Not implemented — unique index on `Name`.** database-schema.md leaves it optional ("decide during implementation; not required"). Skipped: duplicate names are harmless for a personal shortcut list, and a unique constraint would turn a re-save into a 409 the UI has no story for.
 
-- [ ] 5. Frontend — relevance, highlighting, facets, saved searches
-  - [ ] 5.1 Write component tests: highlight helper (incl. regex-unsafe terms), relevance defaults when `q` is present, clicking a facet patches the URL filters, applying a saved search pushes its params
-  - [ ] 5.2 `relevance` sort option; default the UI to it when `q` is present (`use-bookmark-query.ts`, `bookmark-filters.tsx`)
-  - [ ] 5.3 Client-side `<mark>` highlighting helper + use in `bookmark-card.tsx`
-  - [ ] 5.4 Facet panel rendering tag/category counts; clicking one calls the existing `patch`
-  - [ ] 5.5 `api/searches.ts` TanStack Query hooks + Save-search button and saved-search list
-  - [ ] 5.6 Verify tests and `npm run build` pass
+- [x] 5. Frontend — relevance, highlighting, facets, saved searches
+  - [x] 5.1 27 new tests across four files: `lib/highlight.test.ts` (12 — incl. 4 regex-unsafe terms, negation, OR, quoted phrase), `use-bookmark-query.test.tsx` (relevance defaulting), `facet-panel.test.tsx` (counts, click-to-filter, pressed state, empty), `saved-searches.test.tsx` (apply restores the URL, save posts the filter string, no-name guard)
+  - [x] 5.2 `SortBy` gains `relevance`; `use-bookmark-query` defaults to it when `q` is present. **This is what actually switches ranked search on** — the UI always sends an explicit `sortBy`, so the API's own relevance default could never fire from the web app. The Relevance option only appears while a term is present, and clearing the search drops `sort=relevance` (nothing left to rank against)
+  - [x] 5.3 `lib/highlight.ts` + `components/highlighted-text.tsx`, used for card title and description. Terms are regex-escaped (raw user input: `C++`, `(approx)` would throw or match wildly), negated terms are not marked (they can't be why a result matched), and `OR`/`AND` are treated as operators
+  - [x] 5.4 `facet-panel.tsx` renders tag/category counts as `aria-pressed` toggles; clicking reuses the existing URL-param `patch`. Rendered only when the response carries facets
+  - [x] 5.5 `api/searches.ts` hooks + `saved-searches.tsx` popover: apply navigates to the stored param string, save stores `params.toString()` verbatim, delete per row
+  - [x] 5.6 54/54 web tests pass (27 + 27 new); `npm run build` green
+
+  **Highlighting is approximate by design.** It marks the search *terms*, not the lexemes Postgres actually matched — so a stemmed hit ("Test Driven Development" for "testing") ranks and returns correctly but shows no mark. Server-side `ts_headline` is explicitly out of scope; this is the trade-off that buys.
 
 ## Known issues
 

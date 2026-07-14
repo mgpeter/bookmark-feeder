@@ -10,11 +10,13 @@ import { cn } from '@/lib/utils'
 import { BookmarkCard } from './bookmark-card'
 import { BookmarkFilters } from './bookmark-filters'
 import { BookmarkEditDialog, type EditTarget } from './bookmark-edit-dialog'
+import { FacetPanel } from './facet-panel'
 import { MarkAllReadDialog } from './mark-all-read-dialog'
+import { SavedSearches } from './saved-searches'
 import { useBookmarkQuery } from './use-bookmark-query'
 
 export function BookmarkListPage() {
-  const { query, patch, view } = useBookmarkQuery()
+  const { query, params, patch, view } = useBookmarkQuery()
   const { data, isLoading, isError, error, isPlaceholderData } = useBookmarks(query)
   const [dialogTarget, setDialogTarget] = useState<EditTarget>(null)
   const [confirmMarkAll, setConfirmMarkAll] = useState(false)
@@ -52,6 +54,7 @@ export function BookmarkListPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <SavedSearches currentQuery={params.toString()} />
           <Button
             variant="outline"
             onClick={() => setConfirmMarkAll(true)}
@@ -68,6 +71,23 @@ export function BookmarkListPage() {
       </div>
 
       <BookmarkFilters />
+
+      {data?.facets && (
+        <FacetPanel
+          facets={data.facets}
+          selectedTags={query.tags ? query.tags.split(',') : []}
+          selectedCategory={query.categories ?? undefined}
+          onToggleTag={(name) => {
+            const selected = new Set(query.tags ? query.tags.split(',') : [])
+            if (selected.has(name)) selected.delete(name)
+            else selected.add(name)
+            patch({ tags: selected.size ? [...selected].join(',') : null })
+          }}
+          onSelectCategory={(id) =>
+            patch({ categories: query.categories === id ? null : id })
+          }
+        />
+      )}
 
       {isError && (
         <Card className="p-6 text-sm text-destructive">
@@ -89,6 +109,7 @@ export function BookmarkListPage() {
               bookmark={bookmark}
               view={view}
               onEdit={setDialogTarget}
+              searchTerm={query.search}
             />
           ))}
         </div>
