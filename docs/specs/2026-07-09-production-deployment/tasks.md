@@ -1,17 +1,17 @@
 # Spec Tasks
 
-- [ ] 1. Relative `/api` web app (drop absolute base URL)
-  - [ ] 1.1 Update the `api-client` Vitest tests to expect relative, same-origin `/api` URLs (+ `X-API-Key`)
-  - [ ] 1.2 Refactor `api-client` to build `new URL('/api' + path, window.location.origin)`
-  - [ ] 1.3 Simplify the web Settings screen to an API-key-only form; leave the browser extension unchanged
-  - [ ] 1.4 Verify frontend build + Vitest pass
+- [x] 1. Relative `/api` web app (drop absolute base URL)
+  - [x] 1.1 Update the `api-client` Vitest tests to expect relative, same-origin `/api` URLs (+ `X-API-Key`)
+  - [x] 1.2 Refactor `api-client` to build `new URL('/api' + path, window.location.origin)`
+  - [x] 1.3 Simplify the web Settings screen to an API-key-only form; leave the browser extension unchanged
+  - [x] 1.4 Verify frontend build + Vitest pass
 
 - [ ] 2. YARP gateway project + Aspire wiring
-  - [ ] 2.1 Verify the YARP + Aspire service-discovery destination syntax for 13.4.6
-  - [ ] 2.2 Create `BookmarkFeeder.Gateway` (YARP): `AddServiceDefaults`, `AddReverseProxy().LoadFromConfig`, routes `/api/{**}`→api and `/{**}`→web, WebSocket passthrough, `X-API-Key` forwarded
-  - [ ] 2.3 AppHost: make `api` and `web` internal; add `gateway` with `.WithReference(api).WithReference(web)` and the only `.WithExternalHttpEndpoints()`
-  - [ ] 2.4 Configure Vite HMR to work behind the gateway (`server.hmr`/`allowedHosts`); document the direct-Vite fallback
-  - [ ] 2.5 Verify in Aspire dev: the browser hits only the gateway; SPA loads, `/api` works through it, HMR live-reloads
+  - [x] 2.1 Verify the YARP + Aspire service-discovery destination syntax for 13.4.6 (Yarp.ReverseProxy 2.3.0, ServiceDiscovery.Yarp 10.7.0; `AddServiceDiscoveryDestinationResolver`)
+  - [x] 2.2 Create `BookmarkFeeder.Gateway` (YARP): `AddServiceDefaults`, `AddReverseProxy().LoadFromConfig`, routes `/api/{**}`→webapi and `/{**}`→web, `X-API-Key` forwarded (default)
+  - [x] 2.3 AppHost: `web` internal; `gateway` references `webapi` + `web` and is the only `.WithExternalHttpEndpoints()`
+  - [x] 2.4 Vite `allowedHosts` + `/api` dev proxy for the direct-Vite/HMR fallback (documented in the technical spec)
+  - [ ] 2.5 Live-verify in Aspire dev (browser → gateway only; SPA + `/api` + HMR) — code compiles; pending a live `dotnet run` of the AppHost
 
 - [ ] 3. API production hardening
   - [ ] 3.1 Write WebApplicationFactory tests: forwarded headers respected; HTTPS redirect off by default; `/health` + `/alive` reachable in Production
