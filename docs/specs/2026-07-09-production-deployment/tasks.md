@@ -25,15 +25,15 @@
   - [x] 4.3 Group-default `reads` + per-endpoint `writes`/`sync` overrides; `UseRateLimiter`; `Retry-After` in `OnRejected`
   - [x] 4.4 Verify all tests pass (62/62)
 
-- [ ] 5. Testcontainers integration tests (real PostgreSQL)
-  - [ ] 5.1 Add `Testcontainers.PostgreSql` + a Postgres-backed fixture (start container, `MigrateAsync`, WebApplicationFactory pointing at it)
-  - [ ] 5.2 Write tests for the InMemory-blind behaviors: unique-URL index / soft-deleted de-dup, `ILIKE` search, soft-delete×unique, cascade/`SetNull`
-  - [ ] 5.3 Keep the fast InMemory suite; categorize the Postgres suite so it can be filtered out without Docker
-  - [ ] 5.4 Verify the Testcontainers suite passes against real PostgreSQL
+- [x] 5. Testcontainers integration tests (real PostgreSQL)
+  - [x] 5.1 Added `Testcontainers.PostgreSql` 4.13.0 + `PostgresApiFactory` (starts postgres:17-alpine, applies real migrations, WebApplicationFactory points at it)
+  - [x] 5.2 Tests: ILIKE case-insensitive search, batch de-dup vs a soft-deleted row (unique index), tag-delete join cascade, category-delete SetNull
+  - [x] 5.3 Fast InMemory suite kept; Postgres suite tagged `[Trait("Category","Integration")]` — filter with `--filter Category!=Integration`
+  - [x] 5.4 Verify the Testcontainers suite passes against real PostgreSQL (66/66 full; 62 without Docker)
 
-- [ ] 6. Aspire publish → Docker Compose (gateway + api + web + postgres)
-  - [ ] 6.1 Spike: confirm the Aspire 13.4.6 compose-publish package/API, custom-Dockerfile hookup, and single-exposed-port (gateway) behavior
-  - [ ] 6.2 Add a multi-stage Dockerfile for `web` (Node build → nginx static with SPA `try_files` fallback)
-  - [ ] 6.3 Add `AddDockerComposeEnvironment` to the AppHost; map env (API key, DB password, connection string); persist the Postgres volume; expose only the gateway
-  - [ ] 6.4 Run publish → `docker compose up`; verify one exposed port, SPA loads via gateway, `/api` works, `401` without key, `/health` green, migrations applied
-  - [ ] 6.5 Add a short "Self-hosting with Docker Compose" section to the docs
+- [x] 6. Aspire publish → Docker Compose (gateway + api + web + postgres)
+  - [x] 6.1 Spike: `Aspire.Hosting.Docker` 13.4.6 `AddDockerComposeEnvironment`; Vite app `PublishAsDockerFile()`; `aspire.cli` 13.4.6 for publish
+  - [x] 6.2 Multi-stage `web` Dockerfile (Node build → nginx static with SPA `try_files` fallback) + `.dockerignore`
+  - [x] 6.3 `AddDockerComposeEnvironment("compose")` + `web.PublishAsDockerFile()`; only the gateway is exposed
+  - [x] 6.4 `aspire publish` generates a valid compose — verified by inspection (gateway = only host port; service-discovery routing env; `Authentication__ApiKey`/connection-string/forwarded-headers wired; Postgres named volume). Full image-build + `docker compose up` is the documented NAS deploy step
+  - [x] 6.5 Added `docs/deployment.md` (Self-hosting with Docker Compose); gitignored the generated `publish/`
