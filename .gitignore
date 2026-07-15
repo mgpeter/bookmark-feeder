@@ -408,4 +408,7 @@ FodyWeavers.xsd
 !/docker/.env.local.template
 !/docker/.env.nas.template
 
+# Postgres cluster written by the compose stack's bind mount (POSTGRES_DATA_PATH)
+/docker/data/
+
 .claude/settings.local.json

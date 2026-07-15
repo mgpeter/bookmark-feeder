@@ -30,6 +30,28 @@ builder.AddDockerComposeEnvironment("compose")
         {
             postgresService.Restart = "unless-stopped";
 
+            // Bind mount, not a named volume. A named volume does persist across restarts, but it
+            // lives in Docker's internal store (/volume1/@docker/volumes on a Synology) — invisible
+            // in File Station and awkward for Hyper Backup. A bind mount puts the cluster on a real
+            // path you can see, snapshot and back up.
+            //
+            // Relative to the compose file, so it works unchanged in both places: docker/data/postgres
+            // locally, /volume1/docker/bookmarkfeeder/data/postgres on the NAS. Override with
+            // POSTGRES_DATA_PATH to put it elsewhere (a different NAS volume, say).
+            postgresService.Volumes.Clear();
+            postgresService.Volumes.Add(new Volume
+            {
+                Name = "postgres-data",
+                Type = "bind",
+                Source = "${POSTGRES_DATA_PATH:-./data/postgres}",
+                Target = "/var/lib/postgresql",
+                ReadOnly = false,
+            });
+
+            // The named volume the bind mount above replaced; leaving the declaration behind would
+            // have compose create a volume nothing mounts.
+            file.Volumes.Remove("bookmarkfeeder-postgres-data");
+
             // Gives webapi's service_healthy condition something real to wait on: without a
             // healthcheck, "started" only means the container exists, not that it accepts
             // connections, and the API would race it on a cold NAS boot.
