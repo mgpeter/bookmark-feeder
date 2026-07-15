@@ -44,7 +44,7 @@ only in `.env` values, so there is nothing to keep in sync.
 
 ```bash
 cp docker/.env.local.template docker/.env   # first time only
-docker compose -f docker/docker-compose.yaml up -d   # http://localhost:8080
+docker compose -f docker/docker-compose.yaml up -d   # http://localhost:8081
 ```
 
 `docker/.env` is gitignored; `.env.local.template` and `.env.nas.template` are committed with

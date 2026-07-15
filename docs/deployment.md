@@ -39,7 +39,7 @@ a restart can silently change the app.
 ```bash
 cp docker/.env.local.template docker/.env
 docker compose -f docker/docker-compose.yaml up -d
-# http://localhost:8080
+# http://localhost:8081
 ```
 
 Same images, same compose, same wiring as the NAS. Two bugs that made every container fail
@@ -86,7 +86,7 @@ Set:
 |---|---|
 | `API_KEY` | The **only** thing protecting your collection. `openssl rand -base64 32`. Never the dev key. |
 | `POSTGRES_PASSWORD` | `openssl rand -base64 24`. **Pick once** — the database keeps the password from first boot; changing it later locks the API out of its own data. |
-| `GATEWAY_PORT` | The port you'll browse to. 8080 is fine; DSM itself uses 5000/5001. |
+| `GATEWAY_PORT` | The port you'll browse to. Defaults to 8081 — 8080 is a busy port (Glance uses it here) and DSM itself takes 5000/5001. |
 | `*_IMAGE` | The three version tags from step 1. |
 
 You only ever revisit the `*_IMAGE` lines. `aspire publish` never overwrites this file — it only
@@ -113,10 +113,10 @@ sudo docker compose ps                              # all up; postgres (healthy)
 sudo docker compose logs webapi | grep -i migrat    # migrations applied
 ```
 
-Then open `http://<nas>:8080`. You land on **Settings** — paste the `API_KEY` from `.env`. It is
+Then open `http://<nas>:8081`. You land on **Settings** — paste the `API_KEY` from `.env`. It is
 stored in your browser, not on the server.
 
-Point the browser extension at `http://<nas>:8080/api` with the same key.
+Point the browser extension at `http://<nas>:8081/api` with the same key.
 
 ---
 
@@ -162,7 +162,7 @@ If the AppHost changed (ports, services, healthchecks), re-copy `docker-compose.
 
 ## Troubleshooting
 
-**A certificate error on `http://<host>:8080`.** Nothing here redirects to HTTPS. It is your
+**A certificate error on `http://<host>:8081`.** Nothing here redirects to HTTPS. It is your
 browser: HSTS is host-wide and **ignores ports**, so if anything on that hostname ever sent an HSTS
 header, every port on it gets force-upgraded. Clear it at `chrome://net-internals/#hsts` →
 *Delete domain security policies*. An incognito window confirms the diagnosis quickly.

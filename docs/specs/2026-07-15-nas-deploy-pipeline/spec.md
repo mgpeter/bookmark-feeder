@@ -17,7 +17,7 @@ linux-amd64 and pushed to Docker Hub, and the NAS pulls and runs them.
 As a self-hoster, I want BookmarkFeeder running on my NAS rather than on my dev machine, so that my
 collection is available to every device on my network without a laptop being switched on.
 
-I open `http://<nas>:8080` from any machine on the LAN and the dashboard loads, served through the
+I open `http://<nas>:8081` from any machine on the LAN and the dashboard loads, served through the
 gateway, with `/api` behind it. My bookmarks survive a NAS reboot and a `docker compose down`.
 
 ### Ship a change without remembering how
@@ -55,8 +55,8 @@ on the NAS and are never re-entered; only the image tags change between releases
 
 ## Expected Deliverable
 
-1. From a browser on another machine on the LAN, `http://<nas>:8080` loads the React app through the
-   gateway, `/api` is routed behind it, and the browser extension can sync to `http://<nas>:8080/api`.
+1. From a browser on another machine on the LAN, `http://<nas>:8081` loads the React app through the
+   gateway, `/api` is routed behind it, and the browser extension can sync to `http://<nas>:8081/api`.
 2. A fresh `docker compose up -d` on the NAS applies EF migrations automatically, and the data
    survives `docker compose down && docker compose up -d`.
 3. Redeploying after a code change is the documented sequence, with the NAS `.env` untouched except
