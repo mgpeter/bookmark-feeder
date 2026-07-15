@@ -1,73 +1,97 @@
 # BookmarkFeeder Browser Extension
 
-A Chrome/Edge extension that allows you to sync selected bookmark folders with your self-hosted BookmarkFeeder instance.
+Chrome/Edge extension that syncs selected bookmark folders to your self-hosted BookmarkFeeder.
 
-## Features
+It is deliberately **sync-only** — it does not browse your collection. That's the web app's job, and
+there's a button to open it.
 
-- Select specific bookmark folders to sync
-- Manual sync trigger
-- Sync status tracking
-- Server URL configuration
-- Clean, modern UI with Tailwind CSS
+## What it does
 
-## Development Setup
+- Pick which bookmark folders to sync; the selection persists via `chrome.storage.sync`.
+- **Sync Now** walks the chosen folders recursively, preserves each bookmark's folder path as
+  `sourceFolder`, and uploads everything in **one** batch request.
+- Duplicates are skipped server-side by URL, so re-syncing is safe and two browsers can feed one
+  collection. Proven on real data: re-running Chrome's sync gave **0 created / 260 skipped**, and
+  Edge then contributed **166 created / 261 skipped** into the same collection.
+- Reports the last sync time and a created/skipped summary.
 
-1. Clone the repository
-2. Navigate to the extension directory:
-   ```bash
-   cd BookmarkFeeder.BrowserExtension
-   ```
-3. Generate icons (requires ImageMagick):
-   ```bash
-   chmod +x generate-icons.sh
-   ./generate-icons.sh
-   ```
+## Build and load it
 
-## Loading the Extension
+**Prerequisites:** Node.js 22+.
 
-1. Open Chrome/Edge and navigate to the extensions page:
-   - Chrome: `chrome://extensions`
-   - Edge: `edge://extensions`
-2. Enable "Developer mode" in the top right
-3. Click "Load unpacked" and select the `BookmarkFeeder.BrowserExtension` directory
-
-## Configuration
-
-1. Click the extension icon in your browser toolbar
-2. Click the settings icon (gear) to configure your BookmarkFeeder server URL
-3. Add bookmark folders you want to sync using the "Add Folder" button
-4. Click "Sync Now" to manually trigger synchronization
-
-## Development Notes
-
-- The extension uses Manifest V3
-- UI is built with Tailwind CSS (via CDN for simplicity)
-- Chrome Storage Sync API is used for settings persistence
-- Chrome Bookmarks API is used for bookmark access
-
-## Project Structure
-
-```
-BookmarkFeeder.BrowserExtension/
-├── manifest.json        # Extension manifest
-├── popup.html          # Extension popup UI
-├── js/
-│   └── popup.js        # Popup functionality
-├── icons/              # Extension icons
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
-└── README.md           # This file
+```bash
+cd BookmarkFeeder.BrowserExtension
+npm install
+npm run build          # -> dist/
 ```
 
-## Contributing
+Then in Chrome (`chrome://extensions`) or Edge (`edge://extensions`):
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+1. Turn on **Developer mode**
+2. **Load unpacked** → select the **`dist/`** folder (not the repo folder — `dist/` is what the build
+   produces)
+3. Pin the extension and open the popup
+
+After any code change, `npm run build` again and hit **reload** on the extension card. The popup runs
+the built bundle, so it will not change until you do.
+
+## Configure it
+
+The popup opens on **Settings** until a server is set.
+
+| Field | Value |
+|---|---|
+| Server URL | your API base URL, e.g. `http://localhost:5180/api` (dev) or `http://<host>:8081/api` |
+| API key | the `X-API-Key` your server is configured with |
+
+**Test connection** verifies both, then pick folders and hit **Sync Now**. The **Dashboard** button
+opens the web app, derived from the server URL by dropping the trailing `/api`.
+
+Settings live in `chrome.storage.sync`, which is **per browser profile** — each browser you install
+into needs configuring once.
+
+## Package for distribution
+
+```bash
+npm run zip            # builds, then writes bookmarkfeeder-1.0.0.zip
+```
+
+Named from `manifest.json`'s `name` + `version`, with `manifest.json` at the zip's root — what the
+stores require.
+
+## Development
+
+```bash
+npm test               # vitest — chrome.* APIs are stubbed, no network
+npm run build          # tsc -b && vite build
+```
+
+Built with React 19 + Vite + Tailwind v4 + shadcn/ui (the same `radix-nova` theme and Geist font as
+the web app, so the popup matches it), bundled for MV3 by
+[`@crxjs/vite-plugin`](https://github.com/crxjs/chrome-extension-tools). `manifest.json` at the
+project root is the build's source of truth.
+
+```
+manifest.json          # source of truth; popup -> built index.html
+index.html, src/       # React popup
+  lib/                 # sync, api, bookmarks, settings — UI-free on purpose, so the
+                       # planned service worker can import runSync() unchanged
+  features/            # folder picker, settings, sync panel
+scripts/zip.mjs        # packaging
+icons/                 # 16/48/128 + ai.png (1024px master)
+dist/                  # build output — this is what you load unpacked
+```
+
+## Known gaps
+
+- **Manual sync only.** Scheduled background sync is specced but not built
+  (`docs/specs/2026-07-14-extension-auto-sync/`); `src/lib/sync.ts` is already UI-free so the service
+  worker can reuse it.
+- **Not on any store yet** — load unpacked, or see
+  `docs/specs/2026-07-14-extension-publishing/`. That spec also covers narrowing
+  `host_permissions` — currently `http://localhost:*/*` and `https://*/*`, i.e. every HTTPS site —
+  down to just the server you configure. Worth doing before any store review.
 
 ## License
 
-This project is licensed under the terms of the LICENSE file in the root directory. 
+[MIT](../LICENSE), same as the rest of the repo.
