@@ -20,18 +20,37 @@
   `WithDataVolume("bookmarkfeeder-postgres-data")`. The existing dev cluster was copied into the new
   volume (64 MB, PG_VERSION verified); the old volume is left intact as a fallback.
 
-- [ ] 2. Make `aspire publish` emit a runnable artifact
-  - [ ] 2.1 Add the Docker Hub container registry + per-service image push options and
-        `ContainerTargetPlatform.LinuxAmd64` build options in the AppHost
-  - [ ] 2.2 `PublishAsDockerComposeService` / `ConfigureComposeFile`: fixed `8080:8080` gateway
-        mapping, `restart: unless-stopped` on all services, `pg_isready` healthcheck on postgres +
-        `service_healthy` gate on webapi, dashboard pinned to a non-nightly tag and a fixed port
-  - [ ] 2.3 Replace the auto-generated Postgres password with an explicit `postgres-password`
-        parameter so the value is stable across publishes; set both secrets via user-secrets
-  - [ ] 2.4 Run `aspire publish -o ./publish` (PowerShell) and **read the emitted YAML + .env**:
-        image names resolved, no random ports, restart policies present, versions pinned
-  - [ ] 2.5 Confirm the repeatability claim by hand: fill a value in `.env`, re-run `aspire publish`,
-        and verify it was **not** clobbered (`onlyIfMissing`)
+- [x] 2. Make `aspire publish` emit a runnable artifact
+  - [x] 2.1 **Registry/push/build APIs deliberately NOT used.** The compiler rejected every one as
+        evaluation-only (`ASPIRECOMPUTE003` on `AddContainerRegistry`/`WithContainerRegistry`,
+        `ASPIREPIPELINES003` on `WithImagePushOptions`/`WithContainerBuildOptions`/
+        `ContainerTargetPlatform`) — *"subject to change or removal in future updates"*. Using them
+        needs `NoWarn` and pins the deploy to APIs Microsoft may remove. They also buy nothing here:
+        compose already emits `image: "${WEBAPI_IMAGE}"` with no registry configured, so image refs
+        live in the NAS `.env` (fill-once, see 2.5) and the build commands pin `--arch x64` themselves
+  - [x] 2.2 `ConfigureComposeFile` + `PublishAsDockerComposeService` (both non-experimental):
+        `restart: unless-stopped` on all five services; `pg_isready` healthcheck on postgres +
+        `condition: service_healthy` on webapi (was `service_started` — the API could race a
+        cold-booting NAS); dashboard pinned to `aspire-dashboard:9.5.2` **stable** (Aspire emits the
+        *nightly* repo on a floating `:latest` — a preview channel that can change under the NAS at
+        any pull; both repos top out at 9.5.2, there is no 13.x dashboard) and its port pinned
+        (`18888` alone published to a **random** host port)
+  - [x] 2.3 Explicit `postgres-password` parameter replaces `AddPostgres`'s auto-generated one: a
+        generated password is a new value per publish, so the volume would keep the first while a
+        later `.env` carried another, and the API could never connect again
+  - [x] 2.4 `aspire publish` re-run and the artifact **read**: dashboard `9.5.2` + `18888:18888`;
+        postgres `18.3` + `bookmarkfeeder-postgres-data` + healthcheck; webapi `service_healthy`;
+        gateway `"${GATEWAY_PORT}:${GATEWAY_PORT}"`; `restart: unless-stopped` throughout
+  - [x] 2.5 **`onlyIfMissing` confirmed empirically** — set `GATEWAY_PORT=8080` in `.env`, re-ran
+        `aspire publish` twice, value survived. This is the mechanism that makes the NAS `.env`
+        fill-once, and it is now proven rather than inferred from decompiled code
+
+  **Gateway port is `"${GATEWAY_PORT}:${GATEWAY_PORT}"`, not a hardcoded `8080:8080`.** The container's
+  own `HTTP_PORTS` is derived from the same variable, so hardcoding the host side alone would let the
+  two drift and the gateway would listen on a port nothing published. One knob, no drift.
+  **`ConfigureEnvFile` is not usable for this**: it runs in the *prepare* phase (deploy), while publish
+  always writes keys-only — values cannot be seeded from code at publish time.
+  138/138 backend tests green; `publish/` remains gitignored.
 
 - [ ] 3. Build and push the three images
   - [ ] 3.1 Stop the AppHost (it locks `BookmarkFeeder.WebApi.exe`), pick the tag scheme
