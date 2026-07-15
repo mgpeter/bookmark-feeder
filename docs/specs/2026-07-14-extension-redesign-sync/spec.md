@@ -20,8 +20,8 @@ As a user, I want the extension popup to match the BookmarkFeeder web app's look
 the two feel like one product instead of a mismatched neon popup.
 
 The popup is rebuilt with React + shadcn/ui using the same theme tokens, fonts, and components as the
-web app; it presents only what's needed to sync — the folders to sync, the connection settings, and a
-sync button with status — and an "Open dashboard" button to jump to the full app.
+web app; it presents only what's needed to sync - the folders to sync, the connection settings, and a
+sync button with status - and an "Open dashboard" button to jump to the full app.
 
 ### Get to the full app quickly
 
@@ -35,7 +35,7 @@ An "Open dashboard" button opens the web app (derived from the configured server
 1. **Vite + React + shadcn build** - Replace the plain HTML/JS popup with a Vite-built React popup
    (MV3-aware extension build) sharing the web app's shadcn theme tokens and UI components.
 2. **Sync-focused popup UI** - Folder-tree selection, settings (server URL + API key + Test
-   Connection), and a manual "Sync Now" with last-sync status/summary — no bookmark browsing.
+   Connection), and a manual "Sync Now" with last-sync status/summary - no bookmark browsing.
 3. **Open-dashboard link** - A button that opens the web app in a new tab via `chrome.tabs.create`,
    using the web app URL derived from the configured server URL.
 4. **Ported sync logic** - The existing recursive folder traversal + batch upload + storage from

@@ -11,7 +11,7 @@ Make BookmarkFeeder self-hostable on a NAS via Docker Compose using a clean
 multi-container topology: a **YARP reverse-proxy gateway** is the single external
 entry point that routes `/api` to the API and everything else to a static web
 container, with PostgreSQL behind them. The same gateway runs in Aspire for dev, so
-there is one routing model across environments — no CORS for the web app and no
+there is one routing model across environments - no CORS for the web app and no
 frontend path rewrites. Compose artifacts are produced by Aspire's publish pipeline,
 and the data layer is validated against a real PostgreSQL container.
 
@@ -63,7 +63,7 @@ endpoints can't be hammered into resource exhaustion.
 
 ## Out of Scope
 
-- HTTPS/TLS termination at the gateway (Let's Encrypt, certs) — deferred; the gateway
+- HTTPS/TLS termination at the gateway (Let's Encrypt, certs) - deferred; the gateway
   serves plain HTTP for a LAN or an outer proxy to terminate TLS.
 - Multi-user auth, secret-manager integration, and CI/CD pipelines.
 - Backups and wiring OpenTelemetry to a monitoring backend.

@@ -63,7 +63,7 @@ each bookmark's title, URL, and description, with a user-approval workflow.
 ### Complete data ownership
 
 Unlike Pocket, Instapaper, or Raindrop's cloud tiers, BookmarkFeeder runs
-entirely on your own infrastructure — no data leaves your network. This results
+entirely on your own infrastructure - no data leaves your network. This results
 in true privacy and no risk of a service shutting down your access.
 
 ### Browser-native collection, not manual entry
@@ -75,7 +75,7 @@ existing bookmarks flow in without re-entry.
 ### Open, standard, self-hostable stack
 
 Unlike closed SaaS products, BookmarkFeeder is built on .NET, PostgreSQL, React,
-and Docker — deployable on a Synology NAS or any Docker host, and extensible.
+and Docker - deployable on a Synology NAS or any Docker host, and extensible.
 
 ## Key Features
 
@@ -107,4 +107,4 @@ and Docker — deployable on a Synology NAS or any Docker host, and extensible.
 
 - **Web app:** A React interface to browse, search, edit, and organize the collection.
 - **Privacy-preserving favicons:** Domain monograms with an optional same-origin
-  favicon — never a third-party favicon service.
+  favicon - never a third-party favicon service.

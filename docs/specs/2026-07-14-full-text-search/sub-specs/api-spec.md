@@ -7,9 +7,9 @@ This is the API specification for the spec detailed in @docs/specs/2026-07-14-fu
 **Purpose:** Same list endpoint, now full-text-search-backed and facet-returning.
 
 **Parameters (changed/added):**
-- `search` — now interpreted as a full-text query (websearch syntax: quotes, `OR`, `-term`);
+- `search` - now interpreted as a full-text query (websearch syntax: quotes, `OR`, `-term`);
   matches title/description/url (ranked) or tag names.
-- `sortBy` — adds `relevance` (in addition to `dateAdded`, `dateModified`, `title`, `url`).
+- `sortBy` - adds `relevance` (in addition to `dateAdded`, `dateModified`, `title`, `url`).
   When `search` is present and `sortBy` is omitted, results default to `relevance`.
 - All existing filters (`tags`, `categories`, `sourceFolder`, `isRead`, `dateFrom`, `dateTo`),
   `page`, `pageSize`, `sortOrder` are unchanged and compose with `search`.
@@ -26,17 +26,17 @@ This is the API specification for the spec detailed in @docs/specs/2026-07-14-fu
 }
 ```
 `facets` is present when a search/filter is active (may be `null` or empty otherwise). `BookmarkDto`
-itself is unchanged — term highlighting is applied client-side.
+itself is unchanged - term highlighting is applied client-side.
 
 **Errors:** unchanged (401 without key; 429 when rate-limited).
 
-## New: Saved searches — /api/searches
+## New: Saved searches - /api/searches
 
 All under the `/api` group (require `X-API-Key`; rate-limited: reads/writes).
 
 ### GET /api/searches
 **Purpose:** List saved searches.
-**Response:** `SavedSearchDto[]` — `{ id, name, query, dateCreated }`.
+**Response:** `SavedSearchDto[]` - `{ id, name, query, dateCreated }`.
 
 ### POST /api/searches
 **Purpose:** Save the current query + filters.

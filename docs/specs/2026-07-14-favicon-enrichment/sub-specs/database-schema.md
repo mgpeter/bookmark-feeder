@@ -4,10 +4,10 @@ This is the database schema implementation for the spec detailed in @docs/specs/
 
 ## Changes
 
-### Bookmarks — add FaviconFetchedAt
+### Bookmarks - add FaviconFetchedAt
 
 - New column `FaviconFetchedAt` of type `timestamptz`, **nullable**.
-- `FaviconUrl` already exists (`character varying(2048)`, nullable) — no change; it holds the
+- `FaviconUrl` already exists (`character varying(2048)`, nullable) - no change; it holds the
   resolved remote favicon URL.
 
 ```sql

@@ -52,10 +52,10 @@ This project is a self-hosted bookmark management platform intended to replace s
 ### 2. **Backend: BookmarkFeeder.WebApi (.NET 9)**
 
 - **Endpoints:**
-  - `POST /api/bookmarks` – Receive and store bookmarks
-  - `GET /api/bookmarks` – Retrieve bookmarks for display/search
-  - `PUT /api/bookmarks/{id}` – Update tags/categories
-  - `POST /api/bookmarks/categorize` – Trigger OpenAI auto-categorization
+  - `POST /api/bookmarks` - Receive and store bookmarks
+  - `GET /api/bookmarks` - Retrieve bookmarks for display/search
+  - `PUT /api/bookmarks/{id}` - Update tags/categories
+  - `POST /api/bookmarks/categorize` - Trigger OpenAI auto-categorization
 
 - **Features:**
   - Duplicate detection (based on URL or URL + title hash)
@@ -152,4 +152,4 @@ This project is a self-hosted bookmark management platform intended to replace s
 
 ## 📌 Summary
 
-This project empowers users to take control of their bookmarks, enhancing them with AI-driven categorization, tag management, and cross-device synchronization — all self-hosted and privacy-respecting.
+This project empowers users to take control of their bookmarks, enhancing them with AI-driven categorization, tag management, and cross-device synchronization - all self-hosted and privacy-respecting.

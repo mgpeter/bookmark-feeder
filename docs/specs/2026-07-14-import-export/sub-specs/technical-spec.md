@@ -17,8 +17,8 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
 - `POST /api/bookmarks/import` accepts a multipart file upload (`IFormFile`) + optional `format`
   hint. **Auto-detect** the format by sniffing content:
   - **Netscape bookmarks HTML** (`<!DOCTYPE NETSCAPE-Bookmark-file-1>` / nested `DL>DT>A`, `H3`
-    folders) — browsers, and Instapaper's HTML export.
-  - **Pocket HTML** (`ul>li>a` with a `tags` attribute) — and Pocket CSV.
+    folders) - browsers, and Instapaper's HTML export.
+  - **Pocket HTML** (`ul>li>a` with a `tags` attribute) - and Pocket CSV.
   - **JSON** (our export shape) and generic **CSV** (`url,title,tags,…`).
 - Parse HTML with **AngleSharp**; parse CSV with **CsvHelper**; JSON with `System.Text.Json`.
 - Map each entry → `BatchBookmarkItem`: `Url`, `Title`, `DateAdded` (epoch when present),
@@ -33,11 +33,11 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
   (so a filtered/searched view can be exported; default = whole collection). Loads bookmarks with
   tags + category via the existing query path (no pagination).
 - Formats:
-  - **json** — an array of full bookmark objects (url, title, description, tags, category,
+  - **json** - an array of full bookmark objects (url, title, description, tags, category,
     sourceFolder, isRead, dateAdded, dateModified). `Content-Type: application/json`.
-  - **html** — Netscape bookmark file (grouped by `sourceFolder` as `H3` folders; tags emitted as
+  - **html** - Netscape bookmark file (grouped by `sourceFolder` as `H3` folders; tags emitted as
     the `TAGS` attribute on `<A>` for round-trip). `text/html`.
-  - **csv** — `url,title,description,tags,category,sourceFolder,isRead,dateAdded` via CsvHelper.
+  - **csv** - `url,title,description,tags,category,sourceFolder,isRead,dateAdded` via CsvHelper.
     `text/csv`.
 - Return as a download (`Content-Disposition: attachment; filename="bookmarks-<date>.<ext>"`).
 

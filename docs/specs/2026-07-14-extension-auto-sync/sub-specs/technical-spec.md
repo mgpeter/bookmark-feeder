@@ -10,7 +10,7 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
   manifest as `background.service_worker` and bundled by the existing `@crxjs/vite-plugin` build.
 - Add the **`alarms`** permission to `manifest.json`.
 - The worker owns: alarm handling, bookmark-change listeners, running syncs, updating state + badge.
-  It must be event-driven (MV3 workers are ephemeral) — no long-lived timers; use `chrome.alarms`.
+  It must be event-driven (MV3 workers are ephemeral) - no long-lived timers; use `chrome.alarms`.
 
 ### 2. Scheduled sync
 
@@ -36,7 +36,7 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
 - Persist to `chrome.storage`: `lastSyncAt`, `lastSummary` (created/skipped/errors), `lastError`, and
   a `syncStatus` (`idle | syncing | ok | error`). The popup subscribes (via `chrome.storage.onChanged`)
   and renders it.
-- **Action badge:** `chrome.action.setBadgeText`/`setBadgeBackgroundColor` — e.g. spinner-ish while
+- **Action badge:** `chrome.action.setBadgeText`/`setBadgeBackgroundColor` - e.g. spinner-ish while
   syncing, a count or check on success, `!` on error. Clear on success.
 - **Error handling:** `401` → set an error state prompting the user to fix the API key (and surface in
   the popup); network/5xx failures → retry with capped exponential backoff before giving up and

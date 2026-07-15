@@ -7,9 +7,9 @@
 
 ## Overview
 
-Replace the `ILIKE` scan on `GET /api/bookmarks` with PostgreSQL full-text search — a
+Replace the `ILIKE` scan on `GET /api/bookmarks` with PostgreSQL full-text search - a
 generated, GIN-indexed `tsvector` over title/description/url for ranked matching (with tag
-names matched alongside) — returning relevance-ranked results and tag/category facet counts,
+names matched alongside) - returning relevance-ranked results and tag/category facet counts,
 with the search term highlighted in the existing UI, plus saved searches to re-run a
 query+filters combination.
 

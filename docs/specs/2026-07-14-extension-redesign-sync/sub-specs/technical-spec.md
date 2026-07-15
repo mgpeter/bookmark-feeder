@@ -6,8 +6,8 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
 
 ### 1. Vite MV3 extension build (BookmarkFeeder.BrowserExtension)
 
-- Introduce a Vite + React + TypeScript build for the extension. Use an MV3-aware Vite plugin —
-  **`@crxjs/vite-plugin`** (bundles `manifest.json`, popup, and — later — the service worker, with
+- Introduce a Vite + React + TypeScript build for the extension. Use an MV3-aware Vite plugin -
+  **`@crxjs/vite-plugin`** (bundles `manifest.json`, popup, and - later - the service worker, with
   HMR). **Verify at execution:** current `@crxjs/vite-plugin` version + MV3/Vite compatibility.
 - `manifest.json` becomes the build's source of truth (popup points at the built `index.html`);
   keep permissions `bookmarks`, `storage`, and existing `host_permissions` (narrowing is the
@@ -30,7 +30,7 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
   API key [password], Test Connection), and an **Open dashboard** button.
 - **Open dashboard:** compute the web app URL from the stored `serverUrl` by stripping a trailing
   `/api` (or a dedicated `webAppUrl` setting) and open it with `chrome.tabs.create({ url })`.
-- **No bookmark browsing** — the extension only selects folders and syncs.
+- **No bookmark browsing** - the extension only selects folders and syncs.
 
 ### 4. Port existing sync logic into hooks
 
@@ -57,4 +57,4 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
   - **Justification:** the standard way to build a modern React/Vite MV3 extension; avoids hand-wiring
     manifest/asset paths. Pin the latest stable at implementation.
 - React, react-dom, Vite, Tailwind v4, shadcn/ui deps (radix-ui, lucide-react, class-variance-authority,
-  clsx, tailwind-merge), Vitest + Testing Library — mirroring `BookmarkFeeder.Web`.
+  clsx, tailwind-merge), Vitest + Testing Library - mirroring `BookmarkFeeder.Web`.

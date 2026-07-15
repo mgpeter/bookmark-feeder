@@ -54,7 +54,7 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
 - Add a `relevance` option to the sort control; default the UI to relevance when a search term is
   present (`features/bookmarks/use-bookmark-query.ts`, `bookmark-filters.tsx`).
 - Highlight the search term(s) in each card's title/description client-side (wrap matches in
-  `<mark>`) — a small helper + use in `bookmark-card.tsx`. No server highlight field needed.
+  `<mark>`) - a small helper + use in `bookmark-card.tsx`. No server highlight field needed.
 - Facet panel: render tag/category counts from the response; clicking a facet adds it to the
   filters (reuses the existing URL-param `patch`).
 - Saved searches: `api/searches.ts` TanStack Query hooks (`useSavedSearches`, create, delete); a

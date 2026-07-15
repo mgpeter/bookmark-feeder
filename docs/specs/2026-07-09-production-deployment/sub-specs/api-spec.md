@@ -27,13 +27,13 @@ like `/bookmarks` resolve to `index.html` via the web container's own SPA fallba
 
 ### GET /health
 
-**Purpose:** Readiness — is the app able to serve (including the DB check)?
+**Purpose:** Readiness - is the app able to serve (including the DB check)?
 **Response:** `200 Healthy` when checks pass; `503 Unhealthy` when a check fails.
 **Change:** now mapped in Production (previously Development-only).
 
 ### GET /alive
 
-**Purpose:** Liveness — is the process up?
+**Purpose:** Liveness - is the process up?
 **Response:** `200 Healthy`.
 **Change:** now mapped in Production. The gateway also exposes its own `/alive`.
 

@@ -6,7 +6,7 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
 
 ### 1. Model + schema (BookmarkFeeder.WebApi)
 
-- `Bookmark.FaviconUrl` already exists (string, max 2048) — reused as the resolved remote URL.
+- `Bookmark.FaviconUrl` already exists (string, max 2048) - reused as the resolved remote URL.
 - Add `Bookmark.FaviconFetchedAt` (`DateTime?`) to record when discovery was last attempted
   (success or failure), so backfill only picks up bookmarks where it is null and failures aren't
   retried forever. Configure in `Data/BookmarkDbContext.cs`; one EF migration adds the column.
@@ -17,7 +17,7 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
   registered as a singleton; `Enqueue(Guid id)` / `DequeueAllAsync`.
 - `FaviconBackgroundService : BackgroundService` reads the queue and processes IDs with **bounded
   concurrency** (e.g. `SemaphoreSlim(4)`) plus a small politeness delay. This is the project's
-  first hosted background service — the later AI job queue reuses this pattern.
+  first hosted background service - the later AI job queue reuses this pattern.
 - Register in `Program.cs`: `AddSingleton<IFaviconQueue>` + `AddHostedService<FaviconBackgroundService>`
   (+ the resolver and a named HttpClient). The worker resolves scoped services via
   `IServiceScopeFactory` / `IDbContextFactory<BookmarkDbContext>`.
@@ -47,7 +47,7 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
 
 - Per ID: load the (non-deleted) bookmark via `IDbContextFactory`; run the resolver; on success set
   `FaviconUrl` + `FaviconFetchedAt`; on failure set only `FaviconFetchedAt` (leaving `FaviconUrl`
-  null) so it isn't retried. All exceptions are caught and logged at debug/info — favicon fetching
+  null) so it isn't retried. All exceptions are caught and logged at debug/info - favicon fetching
   never affects the API request path.
 
 ### 6. Frontend

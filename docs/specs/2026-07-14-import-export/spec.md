@@ -7,8 +7,8 @@
 ## Overview
 
 Let users move their collection in and out of BookmarkFeeder: synchronously import from browser
-bookmarks HTML (Netscape format) and Pocket/Instapaper exports — mapping folders to `sourceFolder`
-and source tags to tags, skipping URLs already present — and export the collection as JSON, HTML
+bookmarks HTML (Netscape format) and Pocket/Instapaper exports - mapping folders to `sourceFolder`
+and source tags to tags, skipping URLs already present - and export the collection as JSON, HTML
 (re-importable), or CSV, via API endpoints and a web UI action.
 
 ## User Stories

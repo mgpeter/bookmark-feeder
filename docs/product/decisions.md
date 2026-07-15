@@ -35,7 +35,7 @@ a differentiated, defensible position for the target audience.
 **Positive:** Full data ownership; deployable on a home NAS; extensible.
 **Negative:** Self-hosting requires some technical setup; no managed cloud option.
 
-## 2026-07-09: Backend Architecture — .NET 10, Aspire, EF Core Factory Pattern
+## 2026-07-09: Backend Architecture - .NET 10, Aspire, EF Core Factory Pattern
 
 **ID:** DEC-002
 **Status:** Accepted
@@ -119,7 +119,7 @@ React (Angular required a stand-in). Product docs were updated Angular → React
 The web app is a **standalone Vite project** (`BookmarkFeeder.Web`, no `.csproj`)
 run as an Aspire resource via `AddViteApp`. (Originally the API was to serve the
 built static files from `wwwroot` for a single origin; the production hosting
-approach was later replaced by a YARP gateway — see DEC-007. The standalone-Vite
+approach was later replaced by a YARP gateway - see DEC-007. The standalone-Vite
 decision still stands.)
 
 ### Rationale
@@ -133,7 +133,7 @@ API keeps production single-origin and simple.
 **Positive:** Fast, clean dev; simple single-container prod; no CORS in prod.
 **Negative:** Two dev processes (hidden behind Aspire's single run command).
 
-## 2026-07-09: Roadmap Order — Production → Search → AI
+## 2026-07-09: Roadmap Order - Production → Search → AI
 
 **ID:** DEC-006
 **Status:** Accepted
@@ -155,7 +155,7 @@ before adding more features; search and AI layer on afterward.
 **Positive:** A usable, self-hosted product sooner.
 **Negative:** The headline AI feature lands later than a feature-first ordering.
 
-## 2026-07-09: Production Topology — YARP Gateway (supersedes DEC-005 hosting)
+## 2026-07-09: Production Topology - YARP Gateway (supersedes DEC-005 hosting)
 
 **ID:** DEC-007
 **Status:** Accepted
@@ -176,8 +176,8 @@ dev, so routing is identical across environments. The API no longer serves the S
 The single-origin "API serves the SPA from wwwroot" approach forced the frontend to
 work differently across dev and prod (base-path/rewrite handling) and coupled the SPA
 build into the API image. A gateway keeps the containers separate and simple, gives one
-external origin with no CORS for the web app, and — being a .NET/Aspire-native YARP
-project — runs in dev and publishes to compose the same way.
+external origin with no CORS for the web app, and - being a .NET/Aspire-native YARP
+project - runs in dev and publishes to compose the same way.
 
 ### Deviation
 

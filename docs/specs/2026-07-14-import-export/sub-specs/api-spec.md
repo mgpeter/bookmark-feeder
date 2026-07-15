@@ -25,7 +25,7 @@ rate-limited (`writes`/`sync` policy).
 
 **Purpose:** Download the collection (optionally filtered) in an open format.
 **Parameters (query):**
-- `format` — `json` (default) | `html` | `csv`.
+- `format` - `json` (default) | `html` | `csv`.
 - Any existing `BookmarkQuery` filter params (`search`, `tags`, `categories`, `sourceFolder`,
   `isRead`, `dateFrom`, `dateTo`, `sortBy`, `sortOrder`) to export a subset; omitted = whole collection.
 **Response:** `200 OK` file download with `Content-Disposition: attachment; filename="bookmarks-<date>.<ext>"`:

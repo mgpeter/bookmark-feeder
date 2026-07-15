@@ -32,7 +32,7 @@ Rules for maintaining consistent React development in `BookmarkFeeder.Web` (Reac
 2. **shadcn/ui**
    - Add primitives with `npx shadcn@latest add <component>`; they live in `src/components/ui`.
    - Compose feature UI from `ui` primitives rather than restyling from scratch.
-   - Accessibility comes from Radix under shadcn/ui — keep the ARIA/behavior contracts intact.
+   - Accessibility comes from Radix under shadcn/ui - keep the ARIA/behavior contracts intact.
 
 ## Data / Server State
 

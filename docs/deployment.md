@@ -3,14 +3,14 @@
 BookmarkFeeder runs as five containers behind one reverse-proxy gateway:
 
 ```
-        gateway (YARP) — the only port you publish
+        gateway (YARP) - the only port you publish
           ├─ /api/{**} → webapi (.NET) → postgres
           └─ /{**}     → web (static nginx)
         compose-dashboard (telemetry, optional)
 ```
 
 Only **gateway** and the dashboard publish host ports. `webapi`, `web` and `postgres` are internal.
-TLS is not included — put DSM's own reverse proxy in front if you want HTTPS.
+TLS is not included - put DSM's own reverse proxy in front if you want HTTPS.
 
 The compose file is **generated from the Aspire AppHost** and committed at
 `docker/docker-compose.yaml`. Never edit it by hand: change
@@ -31,7 +31,7 @@ docker login -u mgpeter
 Bumps `VERSION`, builds all three images for **linux/amd64**, pushes `:<version>` and `:latest`,
 and prints the three `.env` lines to paste. `VERSION` is only written once the push succeeds.
 
-Deploy the **version tag, never `:latest`** — otherwise "which build is running?" has no answer and
+Deploy the **version tag, never `:latest`** - otherwise "which build is running?" has no answer and
 a restart can silently change the app.
 
 ### 2. Try it locally first (recommended)
@@ -58,7 +58,7 @@ Over SSH (Control Panel → Terminal & SNMP → Enable SSH), or via File Station
 mkdir -p /volume1/docker/bookmarkfeeder
 ```
 
-Everything lives here: the compose file, `.env`, and — importantly — the database. Docker commands
+Everything lives here: the compose file, `.env`, and - importantly - the database. Docker commands
 on DSM need `sudo` unless your user is in the `docker` group.
 
 ### 4. Copy two files
@@ -72,7 +72,7 @@ scp docker/.env.nas.template    you@nas:/volume1/docker/bookmarkfeeder/.env
 
 Only these two. The NAS needs no source, no .NET SDK and no Aspire.
 
-### 5. Fill in `.env` — once
+### 5. Fill in `.env` - once
 
 ```bash
 cd /volume1/docker/bookmarkfeeder
@@ -85,12 +85,12 @@ Set:
 | Key | What |
 |---|---|
 | `API_KEY` | The **only** thing protecting your collection. `openssl rand -base64 32`. Never the dev key. |
-| `POSTGRES_PASSWORD` | `openssl rand -base64 24`. **Pick once** — the database keeps the password from first boot; changing it later locks the API out of its own data. |
-| `GATEWAY_PORT` | The port you'll browse to. Defaults to 8081 — 8080 is a busy port (Glance uses it here) and DSM itself takes 5000/5001. |
+| `POSTGRES_PASSWORD` | `openssl rand -base64 24`. **Pick once** - the database keeps the password from first boot; changing it later locks the API out of its own data. |
+| `GATEWAY_PORT` | The port you'll browse to. Defaults to 8081 - 8080 is a busy port (Glance uses it here) and DSM itself takes 5000/5001. |
 | `*_IMAGE` | The three version tags from step 1. |
 
-You only ever revisit the `*_IMAGE` lines. `aspire publish` never overwrites this file — it only
-adds missing keys — so regenerating the compose leaves your secrets alone.
+You only ever revisit the `*_IMAGE` lines. `aspire publish` never overwrites this file - it only
+adds missing keys - so regenerating the compose leaves your secrets alone.
 
 ### 6. Start it
 
@@ -100,7 +100,7 @@ sudo docker compose up -d
 ```
 
 First start pulls the images, creates `data/postgres`, and **applies the EF migrations
-automatically** — no manual schema step.
+automatically** - no manual schema step.
 
 Alternatively use **Container Manager → Project → Create**, point it at
 `/volume1/docker/bookmarkfeeder`, and it will pick up `docker-compose.yaml`. That gives you
@@ -113,7 +113,7 @@ sudo docker compose ps                              # all up; postgres (healthy)
 sudo docker compose logs webapi | grep -i migrat    # migrations applied
 ```
 
-Then open `http://<nas>:8081`. You land on **Settings** — paste the `API_KEY` from `.env`. It is
+Then open `http://<nas>:8081`. You land on **Settings** - paste the `API_KEY` from `.env`. It is
 stored in your browser, not on the server.
 
 Point the browser extension at `http://<nas>:8081/api` with the same key.
@@ -127,7 +127,7 @@ Point the browser extension at `http://<nas>:8081/api` with the same key.
 ```
 
 A **bind mount**, not a Docker named volume. A named volume would survive restarts perfectly well,
-but it lives in `/volume1/@docker/volumes` — invisible in File Station and not a shared folder
+but it lives in `/volume1/@docker/volumes` - invisible in File Station and not a shared folder
 Hyper Backup can select. This way the database sits in a normal folder you can see, snapshot and
 back up.
 
@@ -155,7 +155,7 @@ sudo docker compose pull && sudo docker compose up -d
 
 Migrations for any new schema apply on start. Your data and secrets are untouched.
 
-If the AppHost changed (ports, services, healthchecks), re-copy `docker-compose.yaml` too —
+If the AppHost changed (ports, services, healthchecks), re-copy `docker-compose.yaml` too -
 `./scripts/docker-compose-generate.sh` regenerates it.
 
 ---
@@ -171,7 +171,7 @@ header, every port on it gets force-upgraded. Clear it at `chrome://net-internal
 are host-global. Change `GATEWAY_PORT`; the gateway's internal port follows, because both sides read
 the same variable.
 
-**Everything 502s.** The gateway cannot reach `web` or `webapi`. `sudo docker compose ps` — check
+**Everything 502s.** The gateway cannot reach `web` or `webapi`. `sudo docker compose ps` - check
 they are up, and that `web` is listening on 8000 (nginx's default 80 is wrong here).
 
 **`3D000: database "bookmarkfeeder" does not exist`.** Migrations did not run. Fixed in 0.1.1;

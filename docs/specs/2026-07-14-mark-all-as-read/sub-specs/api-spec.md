@@ -4,16 +4,16 @@ This is the API specification for the spec detailed in @docs/specs/2026-07-14-ma
 
 ## New: POST /api/bookmarks/mark-read
 
-**Purpose:** Set the read state of every bookmark matching a filter set, in one statement — the
+**Purpose:** Set the read state of every bookmark matching a filter set, in one statement - the
 bulk counterpart to `PATCH /api/bookmarks/{id}/read`.
 
 **Parameters (query string):** the same `BookmarkQuery` the list endpoint binds, with identical
-semantics — `search`, `tags`, `categories`, `sourceFolder`, `isRead`, `dateFrom`, `dateTo`. The
+semantics - `search`, `tags`, `categories`, `sourceFolder`, `isRead`, `dateFrom`, `dateTo`. The
 client sends the same filter string it used for the `GET`, so the affected set is exactly the set
 shown.
 
 `page`, `pageSize`, `sortBy` and `sortOrder` are accepted (they're part of `BookmarkQuery`) but
-**ignored** — the action spans every match across all pages by design.
+**ignored** - the action spans every match across all pages by design.
 
 With no filter parameters, every non-deleted bookmark matches. This is allowed; the UI's
 confirmation dialog is what guards it.
@@ -35,13 +35,13 @@ the currently-unread ones as read".
 ```
 
 `updated` counts rows whose state actually changed. Bookmarks already in the target state are
-skipped, so this can be lower than the matching total (`pagination.totalItems` from the `GET`) —
+skipped, so this can be lower than the matching total (`pagination.totalItems` from the `GET`) -
 the dialog reports the set, this reports the change.
 
 **Errors:**
-- `401 Unauthorized` — missing/invalid `X-API-Key` (inherited from the `/api` group).
-- `429 Too Many Requests` — the `writes` rate-limit policy.
-- `400 Bad Request` — malformed body.
+- `401 Unauthorized` - missing/invalid `X-API-Key` (inherited from the `/api` group).
+- `429 Too Many Requests` - the `writes` rate-limit policy.
+- `400 Bad Request` - malformed body.
 
 **Example**
 

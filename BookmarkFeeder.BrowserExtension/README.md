@@ -2,7 +2,7 @@
 
 Chrome/Edge extension that syncs selected bookmark folders to your self-hosted BookmarkFeeder.
 
-It is deliberately **sync-only** — it does not browse your collection. That's the web app's job, and
+It is deliberately **sync-only** - it does not browse your collection. That's the web app's job, and
 there's a button to open it.
 
 ## What it does
@@ -28,7 +28,7 @@ npm run build          # -> dist/
 Then in Chrome (`chrome://extensions`) or Edge (`edge://extensions`):
 
 1. Turn on **Developer mode**
-2. **Load unpacked** → select the **`dist/`** folder (not the repo folder — `dist/` is what the build
+2. **Load unpacked** → select the **`dist/`** folder (not the repo folder - `dist/` is what the build
    produces)
 3. Pin the extension and open the popup
 
@@ -47,7 +47,7 @@ The popup opens on **Settings** until a server is set.
 **Test connection** verifies both, then pick folders and hit **Sync Now**. The **Dashboard** button
 opens the web app, derived from the server URL by dropping the trailing `/api`.
 
-Settings live in `chrome.storage.sync`, which is **per browser profile** — each browser you install
+Settings live in `chrome.storage.sync`, which is **per browser profile** - each browser you install
 into needs configuring once.
 
 ## Package for distribution
@@ -56,13 +56,13 @@ into needs configuring once.
 npm run zip            # builds, then writes bookmarkfeeder-1.0.0.zip
 ```
 
-Named from `manifest.json`'s `name` + `version`, with `manifest.json` at the zip's root — what the
+Named from `manifest.json`'s `name` + `version`, with `manifest.json` at the zip's root - what the
 stores require.
 
 ## Development
 
 ```bash
-npm test               # vitest — chrome.* APIs are stubbed, no network
+npm test               # vitest - chrome.* APIs are stubbed, no network
 npm run build          # tsc -b && vite build
 ```
 
@@ -74,12 +74,12 @@ project root is the build's source of truth.
 ```
 manifest.json          # source of truth; popup -> built index.html
 index.html, src/       # React popup
-  lib/                 # sync, api, bookmarks, settings — UI-free on purpose, so the
+  lib/                 # sync, api, bookmarks, settings - UI-free on purpose, so the
                        # planned service worker can import runSync() unchanged
   features/            # folder picker, settings, sync panel
 scripts/zip.mjs        # packaging
 icons/                 # 16/48/128 + ai.png (1024px master)
-dist/                  # build output — this is what you load unpacked
+dist/                  # build output - this is what you load unpacked
 ```
 
 ## Known gaps
@@ -87,9 +87,9 @@ dist/                  # build output — this is what you load unpacked
 - **Manual sync only.** Scheduled background sync is specced but not built
   (`docs/specs/2026-07-14-extension-auto-sync/`); `src/lib/sync.ts` is already UI-free so the service
   worker can reuse it.
-- **Not on any store yet** — load unpacked, or see
+- **Not on any store yet** - load unpacked, or see
   `docs/specs/2026-07-14-extension-publishing/`. That spec also covers narrowing
-  `host_permissions` — currently `http://localhost:*/*` and `https://*/*`, i.e. every HTTPS site —
+  `host_permissions` - currently `http://localhost:*/*` and `https://*/*`, i.e. every HTTPS site -
   down to just the server you configure. Worth doing before any store review.
 
 ## License

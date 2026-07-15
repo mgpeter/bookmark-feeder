@@ -20,15 +20,15 @@ forms: react-hook-form + zod
 frontend_testing: Vitest + React Testing Library
 fonts_provider: Geist (self-hosted via @fontsource-variable)
 icon_library: lucide-react
-browser_extension: Chrome/Edge Manifest V3 — React 19 + Vite + shadcn/ui (@crxjs/vite-plugin)
-ai_integration: LLM categorization (provider TBD) — planned
+browser_extension: Chrome/Edge Manifest V3 - React 19 + Vite + shadcn/ui (@crxjs/vite-plugin)
+ai_integration: LLM categorization (provider TBD) - planned
 application_hosting: Self-hosted Docker Compose on a Synology NAS (deployed)
 web_frontend_hosting: Standalone Vite app (Aspire AddViteApp in dev); static nginx container in prod
-reverse_proxy_gateway: YARP (.NET) — single external origin routing /api → api and / → web (dev + prod)
+reverse_proxy_gateway: YARP (.NET) - single external origin routing /api → api and / → web (dev + prod)
 database_hosting: Self-hosted PostgreSQL (Docker container)
-asset_hosting: Static nginx container behind the gateway (same origin) — the API does not serve assets (DEC-007)
+asset_hosting: Static nginx container behind the gateway (same origin) - the API does not serve assets (DEC-007)
 deployment_solution: Docker Compose, generated from the Aspire AppHost (docker/docker-compose.yaml, never hand-edited)
 code_repository_url: git@github.com:mgpeter/bookmark-feeder.git
-container_registry: Docker Hub — mgpeter/bookmarkfeeder-{webapi,gateway,web}, public, linux/amd64
+container_registry: Docker Hub - mgpeter/bookmarkfeeder-{webapi,gateway,web}, public, linux/amd64
 image_versioning: semver in /VERSION; scripts/docker-release.* bumps, builds and pushes :<version> + :latest
 database_storage: bind mount (POSTGRES_DATA_PATH, default ./data/postgres beside the compose file)

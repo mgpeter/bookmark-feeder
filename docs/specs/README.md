@@ -1,18 +1,18 @@
 # Specs
 
 Index of feature specs. Each folder holds `spec.md` (requirements), `sub-specs/` (technical,
-API, schema) and — once broken down for execution — `tasks.md`.
+API, schema) and - once broken down for execution - `tasks.md`.
 
 **Status vocabulary**
 
 | Status | Meaning |
 |---|---|
 | `Planning` | Agreed but not started. Usually no `tasks.md`; sometimes broken down and queued to execute. |
-| `In Progress` | Execution has begun — at least one parent task is checked off. |
+| `In Progress` | Execution has begun - at least one parent task is checked off. |
 | `Completed` | Every parent task in `tasks.md` is checked off and verified. |
 
 The authoritative status of a spec is the `> Status:` line in its own `spec.md`; this table is a
-convenience index. Per-task detail — including deviations, trade-offs and known gaps — lives in
+convenience index. Per-task detail - including deviations, trade-offs and known gaps - lives in
 each spec's `tasks.md`.
 
 ## In progress
@@ -46,7 +46,7 @@ Written, not yet broken into tasks.
 Not spec-scoped; each needs its own change.
 
 - ⚠️ **Flaky integration suite (~1 full run in 8).** `SearchVectorTests` fails intermittently with no
-  assertion message (an exception, not a bad expectation), never in isolation — only when test
+  assertion message (an exception, not a bad expectation), never in isolation - only when test
   classes run in parallel, each spinning up its own PostgreSQL container. Seen again during
   favicon-enrichment and re-confirmed as pre-existing (3 consecutive clean runs after). Suggested
   fix: one xUnit collection with `ICollectionFixture<PostgresApiFactory>` so they share a container.
@@ -59,11 +59,11 @@ Not spec-scoped; each needs its own change.
   The lesson stands though: `production-deployment` was signed off on *"verified by inspection"* and
   left a compose that could not start, plus three bugs that only surfaced when something actually ran.
   **Inspection is not verification.**
-- ~~The production Postgres version is unpinned.~~ **Fixed** — pinned to `18.3` and the tests moved
+- ~~The production Postgres version is unpinned.~~ **Fixed** - pinned to `18.3` and the tests moved
   from `17-alpine` to match, so the suite tests the version that ships. Volume name and compose
   project name pinned too; both previously depended on a hash or a folder name.
 - ⚠️ **The extension has not been pointed at the NAS.** Sync is proven against the dev gateway, not
-  `http://<nas>:8081/api` — the last unverified link in the chain.
+  `http://<nas>:8081/api` - the last unverified link in the chain.
 - **Favicon enrichment has never run against the real collection.** All 434 bookmarks still have
   `faviconUrl: null`; the backfill queues them on the next AppHost start. Until then, resolution
   rates and the politeness limits are only proven against stubs.

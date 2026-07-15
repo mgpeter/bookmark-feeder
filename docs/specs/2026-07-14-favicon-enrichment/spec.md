@@ -10,7 +10,7 @@
 Populate `Bookmark.FaviconUrl` automatically via a background service that, for each new/synced
 bookmark and as a one-time backfill of existing ones, discovers the site's favicon from its own
 origin (parsing `<link rel="icon">` with a `/favicon.ico` fallback), validates it, and stores the
-resolved remote URL — with rate-limited fetching and graceful failure. The web UI already renders
+resolved remote URL - with rate-limited fetching and graceful failure. The web UI already renders
 `FaviconUrl` (with a monogram fallback), so this is a backend-only enhancement.
 
 ## User Stories
@@ -52,7 +52,7 @@ is recorded so it isn't retried endlessly.
 - Any third-party favicon service/proxy.
 - Periodic re-refresh / expiry of favicons, and a manual per-bookmark refresh endpoint (possible
   later enhancement).
-- Frontend changes — `FaviconAvatar` already consumes `FaviconUrl` with a monogram fallback.
+- Frontend changes - `FaviconAvatar` already consumes `FaviconUrl` with a monogram fallback.
 
 ## Expected Deliverable
 

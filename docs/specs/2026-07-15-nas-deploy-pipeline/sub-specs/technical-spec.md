@@ -4,7 +4,7 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
 
 ## How Aspire's compose publishing actually behaves
 
-Established by decompiling `Aspire.Hosting.Docker` 13.4.6 — not from documentation, which is what
+Established by decompiling `Aspire.Hosting.Docker` 13.4.6 - not from documentation, which is what
 produced the current mess. **Verify each of these by running the command at execution time.**
 
 - **`aspire publish` emits a key manifest, deliberately.** `PublishAsync` builds the `.env` with
@@ -13,17 +13,17 @@ produced the current mess. **Verify each of these by running the command at exec
 - **`aspire deploy` is a different pipeline.** Steps: `publish-compose` → `RequiredBy("publish")`;
   `prepare-compose` → `DependsOn("publish")` **and** `DependsOn("build")`; `docker-compose-up-compose`
   → `RequiredBy("deploy")`. So image **build hangs off `deploy`, never off `publish`**. `PrepareAsync`
-  resolves real values (including secrets) into **`.env.{EnvironmentName}`** — a *different file* from
+  resolves real values (including secrets) into **`.env.{EnvironmentName}`** - a *different file* from
   `.env`.
 - **`aspire deploy` is not our deploy command.** `DockerComposeUpAsync` logs *"is now running with
-  Docker Compose **locally**"* — it would start the whole stack on the dev box, not the NAS.
+  Docker Compose **locally**"* - it would start the whole stack on the dev box, not the NAS.
 - **`EnvFile.Add(key, value, comment, onlyIfMissing: true)`** and publish loads the existing file
   first. **Re-running `aspire publish` preserves values already present in `.env`.** This is the
   mechanism that makes the flow repeatable: fill the NAS `.env` once; republishing only adds new keys.
 - **Registry API lives in `Aspire.Hosting` core**, not the Docker package: `AddContainerRegistry`,
   `WithContainerRegistry`, `WithImagePushOptions`, `WithContainerBuildOptions`
   (`ContainerTargetPlatform.LinuxAmd64`). `GetContainerRegistry` falls back to
-  `LocalContainerRegistry.Instance` (endpoint `""` → bare `webapi:latest`) when none is configured —
+  `LocalContainerRegistry.Instance` (endpoint `""` → bare `webapi:latest`) when none is configured -
   which is what happens today.
 - ⚠️ **Verify:** `WithImagePushOptions` is marked `[Experimental]` and may require
   `<NoWarn>$(NoWarn);ASPIREPIPELINES003</NoWarn>`; the exact `.env.{EnvironmentName}` filename; and
@@ -64,7 +64,7 @@ The only code file this spec changes. Shape:
 
 ## 3. Secrets
 
-- **`AddPostgres` auto-generates a password.** Left alone, each publish yields a *different* value —
+- **`AddPostgres` auto-generates a password.** Left alone, each publish yields a *different* value -
   the NAS volume would keep the first password while the next `.env` carries a new one, and the API
   would fail to connect. Pass an explicit `builder.AddParameter("postgres-password", secret: true)`
   so the value is stable and supplied, not generated.
@@ -76,7 +76,7 @@ The only code file this spec changes. Shape:
 ## 4. Images
 
 Tag scheme: `mgpeter/bookmarkfeeder-{webapi,gateway,web}:<git-short-sha>` plus a moving `:latest`.
-**Deploy by sha, never by `latest`** — otherwise "which build is on the NAS?" has no answer.
+**Deploy by sha, never by `latest`** - otherwise "which build is on the NAS?" has no answer.
 
 `webapi` and `gateway` are `Microsoft.NET.Sdk.Web` on `net10.0`, so no Dockerfile is needed:
 
@@ -99,11 +99,11 @@ From an amd64 dev box `--os linux --arch x64` is a straight cross-target; the SD
 registry directly, so no buildx/QEMU is needed for the two .NET services.
 
 **Public-image safety (audited 2026-07-15):** safe. `BookmarkFeeder.Web/.env.development` holds
-`VITE_API_KEY`, but Vite only loads `.env.development` in dev mode — `npm run build` runs production
+`VITE_API_KEY`, but Vite only loads `.env.development` in dev mode - `npm run build` runs production
 mode and bakes nothing from it, and the final nginx stage copies only `/app/dist`. In production
 `import.meta.env.VITE_API_KEY` resolves to `''` and the key is entered in Settings. The API key and
 DB password reach `webapi` as runtime env, never baked. **Confirm by grepping the built bundle for
-the key before the first public push** — the cost of being wrong is a world-readable secret.
+the key before the first public push** - the cost of being wrong is a world-readable secret.
 
 ## 5. The flow
 
@@ -114,7 +114,7 @@ shim Git Bash cannot invoke) → copy `publish/docker-compose.yaml` to the NAS �
 **NAS (SSH):** `docker compose up -d`.
 
 Only the compose YAML is copied; `.env` is NAS-resident and never overwritten. Stop the AppHost
-before building — a running AppHost locks `BookmarkFeeder.WebApi.exe` and fails the build.
+before building - a running AppHost locks `BookmarkFeeder.WebApi.exe` and fails the build.
 
 ## External Dependencies
 

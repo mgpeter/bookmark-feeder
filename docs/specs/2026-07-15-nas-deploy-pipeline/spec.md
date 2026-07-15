@@ -46,12 +46,12 @@ on the NAS and are never re-entered; only the image tags change between releases
 
 ## Out of Scope
 
-- TLS/HTTPS at the gateway — the NAS's own reverse proxy can terminate it. Already deferred by the
+- TLS/HTTPS at the gateway - the NAS's own reverse proxy can terminate it. Already deferred by the
   production-deployment spec.
 - Postgres backups, CI/CD, secret-manager integration, multi-user. All previously deferred.
 - Re-architecting the four-service topology (locked by DEC-007) or the single-shared-API-key model
   (DEC-003).
-- `aspire deploy` as the deployment command — it runs `compose up` against the *local* Docker daemon,
+- `aspire deploy` as the deployment command - it runs `compose up` against the *local* Docker daemon,
   not a remote NAS.
 
 ## Expected Deliverable

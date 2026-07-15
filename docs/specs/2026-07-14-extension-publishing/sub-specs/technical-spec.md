@@ -22,7 +22,7 @@ This is the technical specification for the spec detailed in @docs/specs/2026-07
 
 ### 3. Store assets
 
-- Icons (existing 16/48/128; add 128 store icon if needed), 1–3 screenshots of the popup + a synced
+- Icons (existing 16/48/128; add 128 store icon if needed), 1-3 screenshots of the popup + a synced
   web-app view, a small promo tile, and short/long descriptions. Store under `store/` in the extension.
 
 ### 4. Privacy policy

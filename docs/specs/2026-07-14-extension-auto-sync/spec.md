@@ -6,8 +6,8 @@
 
 ## Overview
 
-Make the extension sync automatically in the background via an MV3 service worker — on a configurable
-schedule (`chrome.alarms`) and optionally when bookmarks change — sharing one sync module with the
+Make the extension sync automatically in the background via an MV3 service worker - on a configurable
+schedule (`chrome.alarms`) and optionally when bookmarks change - sharing one sync module with the
 popup's manual button, and surfacing sync state/history with an action badge and robust error
 handling.
 

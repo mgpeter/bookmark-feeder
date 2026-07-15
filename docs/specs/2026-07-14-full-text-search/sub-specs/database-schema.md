@@ -4,7 +4,7 @@ This is the database schema implementation for the spec detailed in @docs/specs/
 
 ## Changes
 
-### Bookmarks — generated search vector + GIN index
+### Bookmarks - generated search vector + GIN index
 
 - New **generated** column `SearchVector` of type `tsvector`, computed from the row's
   `Title` (weight A), `Description` (weight B, coalesced when null), and `Url` (weight C),
@@ -29,7 +29,7 @@ Rationale: replaces the unindexable `ILIKE '%term%'` scan with an index-backed, 
 relevance-rankable search. Tag names are matched separately in the query (not in this column),
 per the chosen generated-column approach.
 
-### New table — SavedSearches
+### New table - SavedSearches
 
 | Column       | Type                        | Notes                                  |
 |--------------|-----------------------------|----------------------------------------|

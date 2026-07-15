@@ -8,7 +8,7 @@
 ## Overview
 
 Add a "Mark all as read" action to the bookmark list that marks every bookmark matching the
-current search and filters as read — not just the page on screen — behind a confirmation dialog
+current search and filters as read - not just the page on screen - behind a confirmation dialog
 that states exactly how many bookmarks will be affected.
 
 ## User Stories
@@ -20,7 +20,7 @@ want to mark the whole result set as read in one action, so that I don't page th
 each one individually.
 
 The user narrows the list (search term, tags, category, source folder, dates, read state), clicks
-"Mark all as read" in the list header, and sees a dialog naming the count — "Mark all 137 matching
+"Mark all as read" in the list header, and sees a dialog naming the count - "Mark all 137 matching
 bookmarks as read?". On confirm, every match across all pages is marked read, the list refreshes,
 and a toast reports how many were updated.
 
@@ -30,8 +30,8 @@ As a user about to change many records at once, I want the confirmation to tell 
 bookmarks it will touch and whether my filters are narrowing it, so that I don't sweep my whole
 collection by accident.
 
-When no search or filter is active, the action still works but the dialog says so explicitly —
-"Mark all 4,312 bookmarks as read? This affects your entire collection." — so the count and the
+When no search or filter is active, the action still works but the dialog says so explicitly -
+"Mark all 4,312 bookmarks as read? This affects your entire collection." - so the count and the
 wording are the safeguard.
 
 ## Spec Scope
@@ -57,8 +57,8 @@ wording are the safeguard.
 
 ## Expected Deliverable
 
-1. With a search or filter active, "Mark all as read" marks every match across all pages — not
-   just the current page — and the list reflects it after confirming.
+1. With a search or filter active, "Mark all as read" marks every match across all pages - not
+   just the current page - and the list reflects it after confirming.
 2. The confirmation dialog states the correct count before the action, and cancelling changes
    nothing.
 3. With no filters active, the dialog warns that the entire collection is affected, and the action

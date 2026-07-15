@@ -27,7 +27,7 @@ browser ──▶ │  /api/{**}  → api        /{**} → web              │
 
 - New ASP.NET Core project referencing `Yarp.ReverseProxy`; calls `AddServiceDefaults()`
   (for service discovery + health) and `AddReverseProxy().LoadFromConfig(...)`.
-- Two routes (order matters — `/api` first):
+- Two routes (order matters - `/api` first):
   - `api`: match `/api/{**catch}` → cluster `api`.
   - `web`: match `/{**catch}` → cluster `web`.
 - Cluster destinations use **Aspire service discovery** (e.g. address `http://api` and
@@ -47,7 +47,7 @@ browser ──▶ │  /api/{**}  → api        /{**} → web              │
 ### 3. Web app: relative `/api` + Vite HMR behind the gateway
 
 - **Frontend `api-client`**: build request URLs relative to the current origin
-  (`new URL('/api' + path, window.location.origin)`) — drop the absolute base URL. Attach
+  (`new URL('/api' + path, window.location.origin)`) - drop the absolute base URL. Attach
   `X-API-Key` from localStorage as today.
 - **Settings**: the web app's Settings screen keeps only the **API key** field (origin is
   always the gateway). The **browser extension is unchanged** (keeps its server-URL field;
@@ -68,19 +68,19 @@ browser ──▶ │  /api/{**}  → api        /{**} → web              │
 
 ### 5. API production hardening (`BookmarkFeeder.WebApi/Program.cs`)
 
-- **No SPA/static serving in the API** — that is the web container's job. Remove any
+- **No SPA/static serving in the API** - that is the web container's job. Remove any
   wwwroot/fallback plans; the API is purely `/api` + health + OpenAPI/Scalar.
 - Add `app.UseForwardedHeaders()` (X-Forwarded-For/Proto) early so the API sees the real
   scheme/host from the gateway.
 - Make `UseHttpsRedirection` **opt-in** via config (default off; the container runs plain
-  HTTP behind the gateway) — replaces the current `!IsDevelopment()` guard which would
+  HTTP behind the gateway) - replaces the current `!IsDevelopment()` guard which would
   break inside a plain-HTTP container.
 - `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_URLS=http://+:8080`. Connection string
   from `ConnectionStrings__bookmarkfeeder`; API key from `Authentication__ApiKey` (fail-fast
   already enforces it). Migrations run at startup via existing `InitializeDatabaseAsync`.
 - **CORS**: no longer needed for the web app (same origin via gateway). Keep the existing
   permissive policy solely for the browser extension (cross-origin), or scope it to the
-  extension — either is fine.
+  extension - either is fine.
 
 ### 6. Production health & readiness
 
@@ -129,4 +129,4 @@ browser ──▶ │  /api/{**}  → api        /{**} → web              │
   Aspire 13.4.6) - Emits the Docker Compose artifacts.
   - **Justification:** the chosen approach generates compose from the AppHost. Exact id/version
     confirmed at execution.
-- Rate limiting uses built-in `Microsoft.AspNetCore.RateLimiting` — no new package.
+- Rate limiting uses built-in `Microsoft.AspNetCore.RateLimiting` - no new package.

@@ -7,7 +7,7 @@ tested (56 backend tests passing).
 
 - [x] .NET 10 + Aspire 13 upgrade across all projects
 - [x] Bookmark / Tag / Category data model on EF Core 10 + PostgreSQL (soft delete, unique URL, single join table)
-- [x] Full REST API — Bookmarks/Tags/Categories CRUD, batch sync, pagination + filtering, duplicate detection `L`
+- [x] Full REST API - Bookmarks/Tags/Categories CRUD, batch sync, pagination + filtering, duplicate detection `L`
 - [x] X-API-Key authentication (endpoint filter) + OpenAPI/Scalar with pre-filled dev key
 - [x] Browser extension end-to-end sync (recursive folder traversal, batch upload with API key) `M`
 - [x] Database migration, dev seed data, and integration tests `M`
@@ -39,7 +39,7 @@ tested (56 backend tests passing).
 
 ### Features
 
-- [x] YARP reverse-proxy gateway — single external origin (`/api`→api, `/`→web), dev + prod `M`
+- [x] YARP reverse-proxy gateway - single external origin (`/api`→api, `/`→web), dev + prod `M`
 - [x] Web served as its own container (Vite dev / static nginx); relative `/api`, no CORS `M`
 - [x] API production hardening (forwarded headers, opt-in HTTPS redirect, prod health endpoints) `S`
 - [x] Per-endpoint rate limiting (bulk/sync, CRUD, search) `M`
@@ -60,7 +60,7 @@ tested (56 backend tests passing).
 - [x] PostgreSQL full-text search (tsvector + GIN index) replacing the ILIKE scan `L`
 - [x] Relevance ranking, result highlighting, and facets (tags/categories) `M`
 - [x] Search UI: query bar, highlights, facet filters `M`
-- [x] Saved searches `M` (search *history* not built — out of scope in the spec)
+- [x] Saved searches `M` (search *history* not built - out of scope in the spec)
 
 ### Dependencies
 
