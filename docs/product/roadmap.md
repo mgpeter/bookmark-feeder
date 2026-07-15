@@ -12,7 +12,7 @@ tested (56 backend tests passing).
 - [x] Browser extension end-to-end sync (recursive folder traversal, batch upload with API key) `M`
 - [x] Database migration, dev seed data, and integration tests `M`
 
-## Phase 1: Web Frontend (Current)
+## Phase 1: Web Frontend
 
 **Goal:** A usable React web app to browse, search, edit, and organize the collection.
 **Success Criteria:** From a browser, connect via API key, view seeded bookmarks, filter/search, edit a bookmark, and manage tags/categories.
@@ -23,10 +23,10 @@ tested (56 backend tests passing).
 - [x] API connection: Settings screen (URL + X-API-Key), fetch client, 401→Settings, TanStack Query layer `S`
 - [x] App shell, sidebar navigation, dashboard with live counts `S`
 - [x] Bookmark list: search, tag/category/read filters, sort, grid/list, pagination, quick actions `L`
-- [ ] Bookmark edit dialog (retag, recategorize, mark read) `M`
-- [ ] Tag management (create/rename/recolor/delete) `S`
-- [ ] Category management (tree, reparent, delete-with-reassign) `M`
-- [ ] Dashboard polish, empty/error states, source-folder + date-range filters, Vitest tests `M`
+- [x] Bookmark edit dialog (retag, recategorize, mark read) `M`
+- [x] Tag management (create/rename/recolor/delete) `S`
+- [x] Category management (tree, reparent, delete-with-reassign) `M`
+- [x] Dashboard polish, empty/error states, source-folder + date-range filters, Vitest tests `M`
 
 ### Dependencies
 
@@ -39,12 +39,12 @@ tested (56 backend tests passing).
 
 ### Features
 
-- [ ] YARP reverse-proxy gateway — single external origin (`/api`→api, `/`→web), dev + prod `M`
-- [ ] Web served as its own container (Vite dev / static nginx); relative `/api`, no CORS `M`
-- [ ] API production hardening (forwarded headers, opt-in HTTPS redirect, prod health endpoints) `S`
-- [ ] Per-endpoint rate limiting (bulk/sync, CRUD, search) `M`
-- [ ] Integration tests against real PostgreSQL (Testcontainers) `M`
-- [ ] Aspire publish → Docker Compose (gateway + api + web + postgres) `L`
+- [x] YARP reverse-proxy gateway — single external origin (`/api`→api, `/`→web), dev + prod `M`
+- [x] Web served as its own container (Vite dev / static nginx); relative `/api`, no CORS `M`
+- [x] API production hardening (forwarded headers, opt-in HTTPS redirect, prod health endpoints) `S`
+- [x] Per-endpoint rate limiting (bulk/sync, CRUD, search) `M`
+- [x] Integration tests against real PostgreSQL (Testcontainers) `M`
+- [x] Aspire publish → Docker Compose (gateway + api + web + postgres) `L`
 
 ### Dependencies
 
@@ -57,16 +57,16 @@ tested (56 backend tests passing).
 
 ### Features
 
-- [ ] PostgreSQL full-text search (tsvector + GIN index) replacing the ILIKE scan `L`
-- [ ] Relevance ranking, result highlighting, and facets (tags/categories) `M`
-- [ ] Search UI: query bar, highlights, facet filters `M`
-- [ ] Saved searches + search history `M`
+- [x] PostgreSQL full-text search (tsvector + GIN index) replacing the ILIKE scan `L`
+- [x] Relevance ranking, result highlighting, and facets (tags/categories) `M`
+- [x] Search UI: query bar, highlights, facet filters `M`
+- [x] Saved searches `M` (search *history* not built — out of scope in the spec)
 
 ### Dependencies
 
 - Phase 1 web frontend (search UI hooks already present)
 
-## Phase 4: AI Categorization
+## Phase 4: AI Categorization (Current)
 
 **Goal:** Auto-suggest tags and categories with a review workflow.
 **Success Criteria:** New bookmarks receive high-confidence suggestions; user can approve/auto-apply in bulk.
@@ -89,7 +89,7 @@ tested (56 backend tests passing).
 ### Features
 
 - [ ] Import from browser HTML / Pocket / Instapaper; export JSON/HTML/CSV `L`
-- [ ] Favicon enrichment service + content extraction `M`
+- [x] Favicon enrichment service `M` (content extraction not built)
 - [ ] Scheduled/background extension sync `M`
 - [ ] Optional multi-user (User entity + JWT, per-user data) `XL`
 

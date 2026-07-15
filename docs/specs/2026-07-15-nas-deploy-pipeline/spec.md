@@ -2,7 +2,8 @@
 
 > Spec: NAS Deploy Pipeline
 > Created: 2026-07-15
-> Status: Planning
+> Status: Completed
+> Completed: 2026-07-15
 
 ## Overview
 

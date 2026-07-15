@@ -25,7 +25,6 @@ Written, not yet broken into tasks.
 
 | Spec | What it adds | Notes |
 |---|---|---|
-| [nas-deploy-pipeline](2026-07-15-nas-deploy-pipeline/) | Repeatable Aspire → Docker Compose → Synology NAS deploy: pinned prod versions, Docker Hub images, a runnable compose artifact, deploy runbook | **`tasks.md` written — ready to execute.** Task 1 is a correctness fix (prod Postgres is unpinned and drifts from the tested version). Task 4 needs NAS access, so it's a joint session |
 | [extension-auto-sync](2026-07-14-extension-auto-sync/) | MV3 service worker syncing on a `chrome.alarms` schedule, badge + error state | Groundwork done: `src/lib/sync.ts` is UI-free so the worker can import `runSync()` as-is, and a re-sync is proven to be a safe no-op (0 created / 260 skipped). The favicon queue/worker is the server-side counterpart pattern |
 | [extension-publishing](2026-07-14-extension-publishing/) | Store submission: release pipeline, narrowed host permissions, assets, privacy policy | **Partly delivered already**: `npm run zip` exists (built during extension-redesign-sync task 4.1), and `icons/ai.png` is the 1024px master for promo art. Still outstanding: narrowing `host_permissions` from `https://*/*` to the configured origin, store assets, privacy policy, submission runbook. Best done *after* auto-sync, to avoid shipping twice |
 | [import-export](2026-07-14-import-export/) | Netscape/Pocket import; JSON/HTML/CSV export | Least urgent now the extension is the browser-import path; the real value is Pocket migration and data portability |
@@ -34,6 +33,7 @@ Written, not yet broken into tasks.
 
 | Spec | Completed | Delivered |
 |---|---|---|
+| [nas-deploy-pipeline](2026-07-15-nas-deploy-pipeline/) | 2026-07-15 | **BookmarkFeeder actually runs on the NAS.** Versioned build/release scripts → Docker Hub, compose generated from the AppHost into a committed `docker/`, secrets in a fill-once `.env`, Postgres on a bind mount. Deploying found three bugs no amount of reading the YAML would have: migrations skipped in *every* container, nginx on the wrong port, and a data-volume name that depended on the folder name |
 | [favicon-enrichment](2026-07-14-favicon-enrichment/) | 2026-07-14 | The project's first `IHostedService`: a bounded channel queue + background worker resolving each site's favicon from its **own origin only** (never a third-party service), 4 at a time with a politeness delay. Enqueued on create/sync, backfilled on startup. `Favicon:Enabled` turns outbound fetching off. ⚠️ Not yet run against the 434 real bookmarks |
 | [full-text-search](2026-07-14-full-text-search/) | 2026-07-14 | Weighted `tsvector` + GIN index, ranked search replacing the `ILIKE` scan, tag/category facets, saved searches, and the UI (relevance sort, `<mark>` highlighting, facet panel). On real data: `deployed` went 0 → 9 hits, `testing` 3 → 8 |
 | [mark-all-as-read](2026-07-14-mark-all-as-read/) | 2026-07-14 | `POST /api/bookmarks/mark-read` over a shared filter composition, marking every match across all pages in one `ExecuteUpdate`, behind a confirmation dialog stating the count |
@@ -55,15 +55,15 @@ Not spec-scoped; each needs its own change.
   surfacing as `NU1903` on every build. Transitive via the OpenAPI/Scalar setup.
 - **Nested `sourceFolder` paths are unverified by a live sync.** Both folders synced from real
   browsers were flat; nesting is covered only by unit tests and seeded rows.
-- ⚠️ **BookmarkFeeder has never actually been deployed.** `production-deployment` is marked Completed,
-  but its own tasks.md (6.4) downgrades `docker compose up` to *"verified by inspection"* — the YAML
-  was read, never run — and `publish/.env` holds only blank keys. `docs/deployment.md` documents a
-  flow that cannot work and claims `.env` "contains secrets" when it does not. Being addressed by
-  [nas-deploy-pipeline](2026-07-15-nas-deploy-pipeline/).
-- ~~The production Postgres version is unpinned.~~ **Fixed** (nas-deploy-pipeline task 1): pinned to
-  `18.3` in the AppHost and the tests moved from `17-alpine` to match, so the suite now tests the
-  version that ships. The data volume name is pinned too — it was a hashed value that differed between
-  `aspire run` and `aspire publish`, which would have silently given the NAS an empty database.
+- ~~BookmarkFeeder has never actually been deployed.~~ **Deployed 2026-07-15** and running on the NAS.
+  The lesson stands though: `production-deployment` was signed off on *"verified by inspection"* and
+  left a compose that could not start, plus three bugs that only surfaced when something actually ran.
+  **Inspection is not verification.**
+- ~~The production Postgres version is unpinned.~~ **Fixed** — pinned to `18.3` and the tests moved
+  from `17-alpine` to match, so the suite tests the version that ships. Volume name and compose
+  project name pinned too; both previously depended on a hash or a folder name.
+- ⚠️ **The extension has not been pointed at the NAS.** Sync is proven against the dev gateway, not
+  `http://<nas>:8081/api` — the last unverified link in the chain.
 - **Favicon enrichment has never run against the real collection.** All 434 bookmarks still have
   `faviconUrl: null`; the backfill queues them on the next AppHost start. Until then, resolution
   rates and the politeness limits are only proven against stubs.

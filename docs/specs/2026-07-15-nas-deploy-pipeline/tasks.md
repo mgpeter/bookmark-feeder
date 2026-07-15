@@ -52,36 +52,57 @@
   always writes keys-only — values cannot be seeded from code at publish time.
   138/138 backend tests green; `publish/` remains gitignored.
 
-- [ ] 3. Build and push the three images
-  - [ ] 3.1 Stop the AppHost (it locks `BookmarkFeeder.WebApi.exe`), pick the tag scheme
-        (`<git-short-sha>` + `latest`), `docker login -u mgpeter`
-  - [ ] 3.2 Build + push `webapi` and `gateway` via `dotnet publish /t:PublishContainer`
-        (`--os linux --arch x64`)
-  - [ ] 3.3 Build + push `web` via its Dockerfile (`docker buildx build --platform linux/amd64 --push`)
-  - [ ] 3.4 **Before the first public push**, grep the built web bundle for the API key and confirm no
-        secret is baked (expected clean — Vite ignores `.env.development` in a production build, but a
-        public image makes the cost of being wrong permanent)
-  - [ ] 3.5 Verify each image is pullable and is `linux/amd64` (`docker manifest inspect`)
+- [x] 3. Build and push the three images
+  - [x] 3.1 Tag scheme became **semver from a `VERSION` file**, not the planned git sha —
+        `scripts/docker-{build,release}.{ps1,sh}` mirror the glance-dashboard pattern. `VERSION` is
+        written only after a successful push, so a failed release never skips a number
+  - [x] 3.2 `webapi` + `gateway` via `dotnet publish -t:PublishContainer --os linux --arch x64`
+        (**`-t:` not `/t:`** — Git Bash rewrites `/t:` into a Windows path and MSBuild reports the
+        useless *"MSB1008: Only one project can be specified"*)
+  - [x] 3.3 `web` via its Dockerfile (`docker buildx build --platform linux/amd64`)
+  - [x] 3.4 Images audited before the first public push: **clean** — no API key in the web bundle, no
+        `VITE_` values baked, no `.env` shipped, `appsettings.json` carries `"ApiKey": ""`. Verified by
+        opening the images, not by reasoning about them
+  - [x] 3.5 All three confirmed `linux/amd64` and pullable. **0.1.0 is broken** (predates the task-4
+        fixes); **0.1.1 verified good** by running the Hub images from a wiped data dir
 
-- [ ] 4. Deploy to the NAS and prove it ← *the point*
-  - [ ] 4.1 Copy `publish/docker-compose.yaml` to the NAS; create `.env` there once (API key, DB
-        password, image tags, `GATEWAY_PORT=8080`), `chmod 600`
-  - [ ] 4.2 `docker compose up -d`; confirm containers reach healthy and **EF migrations applied on a
-        fresh volume**
-  - [ ] 4.3 Load `http://<nas>:8080` from a *different* machine on the LAN: the React app loads through
-        the gateway and `/api` is routed behind it
-  - [ ] 4.4 Confirm only the intended ports are published (gateway + dashboard), and that data survives
-        `docker compose down && docker compose up -d`
-  - [ ] 4.5 Point the browser extension at `http://<nas>:8080/api`, Test Connection, and sync — the
-        same end-to-end path that was proven against the dev gateway
+- [x] 4. Deploy to the NAS and prove it ← *the point*
+  - [x] 4.1 The artifact moved to a committed `docker/` directory (compose + `.env.*.template`) rather
+        than the gitignored `publish/`; NAS `.env` filled once and never overwritten
+  - [x] 4.2 Verified locally against a wiped data dir, then **on the NAS by the user**: containers
+        healthy, `postgres` gates `webapi` via `service_healthy`, migrations applied automatically
+  - [x] 4.3 **Running on the NAS** — the user confirmed the app loads. Port defaulted to **8081**, not
+        8080, which is taken by their Glance dashboard
+  - [x] 4.4 Data proven to survive a full teardown: bookmark created → `docker compose down`
+        (containers destroyed) → `up` → still there. Only gateway + dashboard publish ports
+  - [ ] 4.5 ⚠️ **Extension against the NAS not yet done** — the sync path is proven against the dev
+        gateway, not `http://<nas>:8081/api`. Belongs with the extension distribution work
 
-- [ ] 5. Doc truth
-  - [ ] 5.1 Rewrite `docs/deployment.md`: real commands, the publish-emits-keys-only behaviour, image
-        build/push, the NAS-resident `.env`. Remove the false claim that `.env` "contains secrets"
-  - [ ] 5.2 Check off roadmap Phase 2's six built-but-unchecked items; mark Phase 1's actual state
-  - [ ] 5.3 Fix `tech-stack.md`'s stale `asset_hosting: Served by the API` (superseded by DEC-007 — the
-        `web` nginx container serves assets); add the registry/image facts
-  - [ ] 5.4 Index this spec in `docs/specs/README.md` and move it to Completed
+- [x] 5. Doc truth
+  - [x] 5.1 `docs/deployment.md` rewritten around the flow that actually works, replacing one that
+        could not run (it claimed `.env` "contains secrets" when publish writes blank keys, and
+        hand-waved the images entirely). Troubleshooting covers the failures actually hit
+  - [x] 5.2 Roadmap Phase 2 checked off; phases trued up against what shipped
+  - [x] 5.3 `tech-stack.md`'s stale `asset_hosting` fixed; registry/deploy facts added
+  - [x] 5.4 Indexed in `docs/specs/README.md`
+
+  **Three bugs found by deploying that no amount of reading the compose would have caught, and which
+  the predecessor spec's "verified by inspection" sign-off missed:**
+  1. **Migrations never ran in any container.** `IsDesignTimeBuild()` treated
+     `DOTNET_RUNNING_IN_CONTAINER=true` — set by *every* .NET container image — as a design-time
+     build, so `InitializeDatabaseAsync` was skipped and every request died on
+     `3D000: database "bookmarkfeeder" does not exist`. Latent since the first API commit.
+  2. **Every page load 502'd.** nginx listened on its default 80; Aspire fixes the web resource at
+     8000 and points the gateway at `http://web:8000`.
+  3. **The data volume name was a moving target.** `WithDataVolume()` derives a hash that differed
+     between `aspire run` and `aspire publish`, and compose prefixes it with the *directory* name —
+     so the database's identity depended on what the folder was called. Now pinned, with an explicit
+     compose project name.
+
+  **Also beyond spec:** the cluster writes to a **bind mount** (`POSTGRES_DATA_PATH`, default
+  `./data/postgres`) rather than a named volume. A named volume survives restarts fine, but lives in
+  `/volume1/@docker/volumes` — invisible in File Station and not a folder Hyper Backup can select.
+  That directory is now the only thing worth backing up.
 
 ## Notes
 
