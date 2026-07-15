@@ -94,6 +94,34 @@ What you should know:
 [**docs/deployment.md**](docs/deployment.md) is a full walkthrough for a Synology NAS, including
 where things live and how to update.
 
+## Install the browser extension
+
+The extension is how bookmarks get in - there is no other import path yet. It isn't on any store, so
+you load it unpacked in developer mode. Same steps in Chrome and Edge, against a local or a
+self-hosted server.
+
+```bash
+cd BookmarkFeeder.BrowserExtension
+npm install && npm run build      # -> dist/
+```
+
+1. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**
+2. **Load unpacked**, then select `BookmarkFeeder.BrowserExtension/dist` - the build output, not the
+   project folder
+3. Open the popup, fill in **Server URL** and **API key**, and hit **Test connection**
+
+| Server | Server URL |
+|---|---|
+| Local | `http://localhost:5180/api` (key: `dev-local-bookmarkfeeder-key`) |
+| Self-hosted | `http://<host>:8081/api` (the `API_KEY` from your `.env`) |
+
+Pick your folders, hit **Sync Now**, and browse them in the dashboard. Re-syncing is safe: duplicates
+are skipped by URL, so several browsers can feed one collection. Settings are stored per browser
+profile, so each browser needs configuring once.
+
+After changing extension code, `npm run build` again and press **reload** on the extension card - the
+popup runs the built bundle. Details in the [extension readme](BookmarkFeeder.BrowserExtension/README.md).
+
 ## Building and releasing
 
 The compose file is **generated from the Aspire AppHost** - `BookmarkFeeder.AppHost/Program.cs` is the
