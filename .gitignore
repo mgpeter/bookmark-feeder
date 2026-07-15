@@ -399,7 +399,13 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
-# Aspire publish output (contains secrets in .env)
+# Aspire publish output. The generated compose is committed under docker/ (it holds no literal
+# secrets — every one is a ${VAR}); only the filled-in .env is ignored. The .env.*.template files
+# are committed and carry placeholders.
 /publish/
+/docker/.env
+/docker/.env.*
+!/docker/.env.local.template
+!/docker/.env.nas.template
 
 .claude/settings.local.json

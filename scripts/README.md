@@ -5,6 +5,7 @@ whichever shell you're in.
 
 | Script | Does |
 |---|---|
+| `docker-compose-generate` | Regenerates `docker/docker-compose.yaml` from the Aspire AppHost. |
 | `docker-build` | Builds `webapi`, `gateway`, `web` at the current `VERSION`. No bump, no push. |
 | `docker-release` | Bumps `VERSION`, builds, pushes `:<version>` and `:latest` to Docker Hub. |
 
@@ -14,18 +15,41 @@ release leaves it untouched and re-running retries the same number rather than s
 `--no-push` builds without releasing and therefore does not bump it.
 
 ```bash
-./scripts/docker-build.sh                   # build the current version locally
-./scripts/docker-release.sh --dry-run       # show the bump, change nothing
-./scripts/docker-release.sh --minor         # 0.0.0 -> 0.1.0, build, push
+./scripts/docker-compose-generate.sh          # AppHost -> docker/docker-compose.yaml
+./scripts/docker-compose-generate.sh --check  # fail if the committed compose is stale
+./scripts/docker-build.sh                     # build the current version locally
+./scripts/docker-release.sh --dry-run         # show the bump, change nothing
+./scripts/docker-release.sh --minor           # 0.1.0 -> 0.2.0, build, push
 ./scripts/docker-release.sh --patch --no-push
 ```
 
 ```powershell
+./scripts/docker-compose-generate.ps1
+./scripts/docker-compose-generate.ps1 -Check
 ./scripts/docker-build.ps1
 ./scripts/docker-release.ps1 -DryRun
 ./scripts/docker-release.ps1 -Minor
 ./scripts/docker-release.ps1 -Patch -NoPush
 ```
+
+## The compose file is generated
+
+`docker/docker-compose.yaml` comes from `BookmarkFeeder.AppHost/Program.cs` — **never edit it by
+hand.** Change the AppHost, run `docker-compose-generate`, commit the result. `--check` fails if the
+two have drifted, which is what stops the file quietly becoming a second source of truth.
+
+It is committed because it holds no literal secrets (every one is a `${VAR}`), so releases are
+diffable and the NAS needs no Aspire install. One compose serves both local and NAS — they differ
+only in `.env` values, so there is nothing to keep in sync.
+
+```bash
+cp docker/.env.local.template docker/.env   # first time only
+docker compose -f docker/docker-compose.yaml up -d   # http://localhost:8080
+```
+
+`docker/.env` is gitignored; `.env.local.template` and `.env.nas.template` are committed with
+placeholders. Regenerating never clobbers a filled-in `.env` — `aspire publish` only adds missing
+keys (`onlyIfMissing`).
 
 Images: `mgpeter/bookmarkfeeder-{webapi,gateway,web}`, all **linux/amd64** (the NAS). `webapi` and
 `gateway` build via the .NET SDK's container support — no Dockerfile; `web` uses its own
