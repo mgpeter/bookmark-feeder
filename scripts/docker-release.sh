@@ -2,9 +2,11 @@
 # Bumps VERSION, builds the three images, and pushes them to Docker Hub.
 #
 # VERSION holds the last released version; this bumps it, builds via docker-build.sh, and pushes
-# :<version> and :latest for webapi, gateway and web.
+# :<version> and :latest for webapi, gateway and web. VERSION is written only after the push
+# succeeds, so a failure leaves it untouched and re-running retries the same number.
 #
 # Requires `docker login -u mgpeter` first — this script will not handle credentials.
+# --no-push builds without releasing, and therefore does not bump VERSION.
 #
 # Deploy the NAS by the version tag, never :latest, so "which build is running?" always has an
 # answer. The .env lines to paste are printed at the end.
@@ -80,21 +82,18 @@ if [[ $dry_run -eq 1 ]]; then
   exit 0
 fi
 
-# Fail before building rather than after: a push that 401s having spent minutes building is a
-# waste of everyone's time.
-if [[ $no_push -eq 0 ]]; then
-  if ! docker system info 2>/dev/null | grep -qE '^\s*Username:'; then
-    echo "Not logged in to Docker Hub. Run: docker login -u $NAMESPACE" >&2
-    exit 1
-  fi
-fi
-
-printf '%s\n' "$new" > "$VERSION_FILE"
+# There is deliberately no "are you logged in?" pre-check. Docker Desktop stores credentials in
+# the OS credential manager (credsStore), so `docker info` reports no Username and config.json's
+# auths entries are empty — every cheap check gives false negatives and blocks real releases.
+# `docker push` says "denied: requested access to the resource is denied" clearly enough, and
+# VERSION is only written once the push succeeds, so a failed login costs a rebuild, not a
+# corrupted version.
 
 "$SCRIPT_DIR/docker-build.sh" --version "$new"
 
 if [[ $no_push -eq 1 ]]; then
-  echo "Built (push skipped): $new"
+  # VERSION is not bumped: nothing was released, so the last released version has not changed.
+  echo "Built (push skipped, VERSION left at ${current}): $new"
   exit 0
 fi
 
@@ -102,6 +101,10 @@ for service in "${SERVICES[@]}"; do
   echo "Pushing $NAMESPACE/bookmarkfeeder-$service (all tags) ..."
   docker push --all-tags "$NAMESPACE/bookmarkfeeder-$service"
 done
+
+# Only now: VERSION records what was actually released. A failed push leaves it untouched, so
+# re-running the same command retries the same number instead of skipping one.
+printf '%s\n' "$new" > "$VERSION_FILE"
 
 echo "Released $new"
 echo

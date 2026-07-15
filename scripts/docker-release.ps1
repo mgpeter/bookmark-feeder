@@ -5,9 +5,11 @@
 
 .DESCRIPTION
     VERSION holds the last released version; this bumps it, builds via docker-build.ps1, and
-    pushes :<version> and :latest for webapi, gateway and web.
+    pushes :<version> and :latest for webapi, gateway and web. VERSION is written only after the
+    push succeeds, so a failure leaves it untouched and re-running retries the same number.
 
     Requires `docker login -u mgpeter` first — this script will not handle credentials.
+    -NoPush builds without releasing, and therefore does not bump VERSION.
 
     Deploy the NAS by the version tag, never :latest, so "which build is running?" always has
     an answer. The .env lines to paste are printed at the end.
@@ -71,22 +73,19 @@ if ($DryRun) {
     return
 }
 
-# Fail before building rather than after: a push that 401s having spent minutes building is
-# a waste of everyone's time.
-if (-not $NoPush) {
-    $loggedIn = & docker system info 2>$null | Select-String -Pattern '^\s*Username:'
-    if (-not $loggedIn) {
-        throw "Not logged in to Docker Hub. Run: docker login -u $namespace"
-    }
-}
-
-Set-Content -Path $versionFile -Value $new
+# There is deliberately no "are you logged in?" pre-check. Docker Desktop stores credentials in
+# the OS credential manager (credsStore), so `docker info` reports no Username and config.json's
+# auths entries are empty — every cheap check gives false negatives and blocks real releases.
+# `docker push` says "denied: requested access to the resource is denied" clearly enough, and
+# VERSION is only written once the push succeeds, so a failed login costs a rebuild, not a
+# corrupted version.
 
 & (Join-Path $PSScriptRoot 'docker-build.ps1') -Version $new
 if ($LASTEXITCODE -ne 0) { throw 'build failed' }
 
 if ($NoPush) {
-    Write-Host "Built (push skipped): $new" -ForegroundColor Yellow
+    # VERSION is not bumped: nothing was released, so the last released version has not changed.
+    Write-Host "Built (push skipped, VERSION left at $current): $new" -ForegroundColor Yellow
     return
 }
 
@@ -96,6 +95,10 @@ foreach ($service in $services) {
     & docker push --all-tags $image
     if ($LASTEXITCODE -ne 0) { throw "docker push failed for $service" }
 }
+
+# Only now: VERSION records what was actually released. A failed push leaves it untouched, so
+# re-running the same command retries the same number instead of skipping one.
+Set-Content -Path $versionFile -Value $new
 
 Write-Host "Released $new" -ForegroundColor Green
 Write-Host ''
