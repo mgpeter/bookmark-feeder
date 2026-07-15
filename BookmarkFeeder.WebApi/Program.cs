@@ -213,8 +213,13 @@ static string ClientPartitionKey(HttpContext context)
 
 static bool IsDesignTimeBuild()
 {
+    // NOT DOTNET_RUNNING_IN_CONTAINER. Every .NET container image sets it, so including it here
+    // made this return true in production, which skipped InitializeDatabaseAsync — migrations
+    // never ran, the database was never created, and every request died on
+    // 3D000: database "bookmarkfeeder" does not exist. Running in a container is the opposite of
+    // a design-time build. Latent since the first API commit because nothing had ever been
+    // deployed to one.
     return Environment.GetEnvironmentVariable("EF_DESIGN_MODE") == "True" ||
-           Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true" ||
            Environment.GetCommandLineArgs().Any(arg => arg.Contains("GetDocument"));
 }
 
