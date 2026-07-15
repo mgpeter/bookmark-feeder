@@ -1,3 +1,4 @@
+name: "bookmark-feeder"
 services:
   compose-dashboard:
     image: "mcr.microsoft.com/dotnet/aspire-dashboard:9.5.2"

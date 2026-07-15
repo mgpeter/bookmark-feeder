@@ -17,6 +17,13 @@ var builder = DistributedApplication.CreateBuilder(args);
 builder.AddDockerComposeEnvironment("compose")
     .ConfigureComposeFile(file =>
     {
+        // Without this, compose derives the project name from the DIRECTORY it runs in — "docker"
+        // here, something else on the NAS. That name labels the stack and, worse, prefixes the
+        // data volume (docker_bookmarkfeeder-postgres-data), so the database's identity would
+        // depend on what the folder happens to be called. Naming it makes the stack and its
+        // volume deterministic on every host.
+        file.Name = "bookmark-feeder";
+
         // postgres and the dashboard are generated for us, so they are customised here rather
         // than through PublishAsDockerComposeService.
         if (file.Services.TryGetValue("postgres", out var postgresService))
