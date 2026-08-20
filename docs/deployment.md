@@ -35,26 +35,54 @@ auth0 login
 
 # The API. --offline-access=true is what allows refresh tokens to be issued at all; without it
 # `offline_access` is silently dropped and you get signed out roughly every hour.
-auth0 apis create --name "BookmarkFeeder API"   --identifier "https://api.bookmarkfeeder"   --signing-alg RS256 --offline-access=true --json
+auth0 apis create --name "BookmarkFeeder API" \
+  --identifier "https://api.bookmarkfeeder" \
+  --signing-alg RS256 --offline-access=true --json
 
 # The SPA application. --auth-method None means a public client using PKCE, with no secret.
-# --origins is the CORS allow-list for the token endpoint; omit it and everything works until the
-# first token REFRESH, hours later, which then fails with a CORS error.
-auth0 apps create --name "BookmarkFeeder Web" --type spa --auth-method None   --grants code,refresh-token   --callbacks   "http://localhost:5180,https://<machine>.<tailnet>.ts.net"   --logout-urls "http://localhost:5180,https://<machine>.<tailnet>.ts.net"   --origins     "http://localhost:5180,https://<machine>.<tailnet>.ts.net"   --refresh-token '{"rotation_type":"rotating","expiration_type":"expiring","token_lifetime":2592000,"idle_token_lifetime":1209600}'   --json
+auth0 apps create --name "BookmarkFeeder Web" --type spa --auth-method None \
+  --grants code,refresh-token \
+  --callbacks   "http://localhost:5180,http://localhost:5173,https://<machine>.<tailnet>.ts.net" \
+  --logout-urls "http://localhost:5180,http://localhost:5173,https://<machine>.<tailnet>.ts.net" \
+  --origins     "http://localhost:5180,http://localhost:5173,https://<machine>.<tailnet>.ts.net" \
+  --refresh-token '{"rotation_type":"rotating","expiration_type":"expiring","token_lifetime":2592000,"idle_token_lifetime":1209600}' \
+  --json
 ```
 
 Note the API identifier is permanent - changing it later invalidates every token and every client
 config, so pick it once.
 
-**Then enable the connection**, which has no first-class CLI command. New applications have their
-connections switched **off**, and the symptom is an opaque "Unauthorized" on your very first login:
+### The `--origins` flag is not the setting you need
+
+`--origins` writes **Allowed Origins (CORS)** (`allowed_origins`). The setting that silent token
+refresh actually depends on is **Allowed Web Origins** (`web_origins`), and the CLI has no flag for
+it - it is left `null`, so the first login works and the session then dies at the first token
+refresh with a CORS error. Set it explicitly:
 
 ```bash
-auth0 api get connections     # find Username-Password-Authentication, note its existing enabled_clients
-auth0 api patch "connections/<id>" --data '{"enabled_clients":["<web-client-id>"]}'
+auth0 api patch "clients/<web-client-id>" \
+  --data '{"web_origins":["http://localhost:5180","http://localhost:5173","https://<machine>.<tailnet>.ts.net"]}'
 ```
 
-`enabled_clients` is **replaced**, not merged - include any ids already in the list.
+Verify with `auth0 api get "clients/<web-client-id>"` that `web_origins` is populated, not null.
+
+### Check the connection, do not blindly patch it
+
+New applications are usually enabled on the tenant's connections automatically, so there is often
+nothing to do. Check first:
+
+```bash
+auth0 api get "connections"                      # find Username-Password-Authentication and its id
+auth0 api get "connections/<id>/clients"         # the authoritative list
+```
+
+If your new client id is listed, you are done.
+
+⚠️ **Do not reach for `--data '{"enabled_clients":[...]}'`.** That field is deprecated: it reads
+back empty even when the connection has clients, so "fix" it and you would blank the real list -
+breaking sign-in for every *other* application in the tenant. The live data is behind
+`/connections/<id>/clients`, and connections are managed through the dashboard or the dedicated
+endpoints.
 
 Keep the client id from `auth0 apps create`; it goes into `.env` in step 5.
 
