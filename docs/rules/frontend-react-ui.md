@@ -43,8 +43,10 @@ Rules for maintaining consistent React development in `BookmarkFeeder.Web` (Reac
 
 2. **api-client**
    - All requests go through the `src/lib` `api-client` fetch wrapper.
-   - The wrapper injects the shared `X-API-Key` header and the API base URL.
-   - Never hardcode the API key or secrets in components.
+   - The wrapper attaches the Auth0 bearer token via a token getter registered by
+     `src/auth/api-token-bridge.tsx`. Keep the client React-free: it is imported by the query
+     functions in `src/api`, so it must not import a hook.
+   - Never read tokens or call `useAuth0` from a component that just wants to fetch.
 
 ## Routing
 

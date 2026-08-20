@@ -1,6 +1,6 @@
 import { createBrowserRouter } from 'react-router-dom'
 import { Shell } from '@/layout/shell'
-import { RequireConfig } from '@/config/require-config'
+import { RequireAuth } from '@/auth/require-auth'
 import { DashboardPage } from '@/features/dashboard/dashboard-page'
 import { BookmarkListPage } from '@/features/bookmarks/bookmark-list-page'
 import { TagsPage } from '@/features/tags/tags-page'
@@ -14,36 +14,43 @@ export const router = createBrowserRouter([
       {
         path: '/',
         element: (
-          <RequireConfig>
+          <RequireAuth>
             <DashboardPage />
-          </RequireConfig>
+          </RequireAuth>
         ),
       },
       {
         path: '/bookmarks',
         element: (
-          <RequireConfig>
+          <RequireAuth>
             <BookmarkListPage />
-          </RequireConfig>
+          </RequireAuth>
         ),
       },
       {
         path: '/tags',
         element: (
-          <RequireConfig>
+          <RequireAuth>
             <TagsPage />
-          </RequireConfig>
+          </RequireAuth>
         ),
       },
       {
         path: '/categories',
         element: (
-          <RequireConfig>
+          <RequireAuth>
             <CategoriesPage />
-          </RequireConfig>
+          </RequireAuth>
         ),
       },
-      { path: '/settings', element: <SettingsPage /> },
+      {
+        path: '/settings',
+        element: (
+          <RequireAuth>
+            <SettingsPage />
+          </RequireAuth>
+        ),
+      },
     ],
   },
 ])

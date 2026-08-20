@@ -1,4 +1,5 @@
 using Scalar.AspNetCore;
+using BookmarkFeeder.WebApi.Auth;
 using BookmarkFeeder.WebApi.Data;
 using BookmarkFeeder.WebApi.Endpoints;
 using BookmarkFeeder.WebApi.Filters;
@@ -6,7 +7,9 @@ using BookmarkFeeder.WebApi.Services;
 using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,10 +19,15 @@ builder.AddServiceDefaults();
 // Register the DbContext through a single factory-owned pattern. Services resolve
 // IDbContextFactory<BookmarkDbContext> (docs: factory pattern, no generic repositories);
 // a scoped context sourced from the factory keeps health checks and scoped consumers working.
+// Scoped, NOT the default singleton: BookmarkDbContext's constructor takes the scoped
+// ICurrentUserContext that drives the owner query filter, and EF resolves constructor
+// dependencies from the provider the FACTORY was resolved from. A singleton factory holds the
+// root provider and would throw "Cannot resolve scoped service from root provider".
 builder.Services.AddDbContextFactory<BookmarkDbContext>((_, options) =>
     options.UseNpgsql(
         builder.Configuration.GetConnectionString("bookmarkfeeder"),
-        npgsql => npgsql.EnableRetryOnFailure()));
+        npgsql => npgsql.EnableRetryOnFailure()),
+    lifetime: ServiceLifetime.Scoped);
 
 builder.Services.AddScoped(sp =>
     sp.GetRequiredService<IDbContextFactory<BookmarkDbContext>>().CreateDbContext());
@@ -38,6 +46,17 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownNetworks.Clear();
     options.KnownProxies.Clear();
 });
+
+// Identity: two authentication schemes (Auth0 bearer for the web app, minted API keys for the
+// extension) plus the per-request resolution of who the caller is.
+builder.AddBookmarkFeederAuthentication();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
+builder.Services.AddScoped<IUserProvisioningService, UserProvisioningService>();
+builder.Services.AddScoped<IApiKeyService, ApiKeyService>();
+builder.Services.AddScoped<CurrentUserEndpointFilter>();
+builder.Services.AddScoped<ApiKeyScopeFilter>();
 
 // Application services (consume IDbContextFactory<BookmarkDbContext>).
 builder.Services.AddScoped<IBookmarkService, BookmarkService>();
@@ -76,21 +95,62 @@ builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, _, _) =>
     {
+        var domain = builder.Configuration["Auth0:Domain"];
+        var audience = builder.Configuration["Auth0:Audience"];
+
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+
+        // Always available: paste a token from any source.
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "Auth0 access token, as `Authorization: Bearer <jwt>`."
+        };
+
+        // Retained so the docs still describe how the extension authenticates.
         document.Components.SecuritySchemes["ApiKey"] = new OpenApiSecurityScheme
         {
             Type = SecuritySchemeType.ApiKey,
             In = ParameterLocation.Header,
-            Name = ApiKeyEndpointFilter.HeaderName,
-            Description = "Shared API key sent as the X-API-Key header."
+            Name = ApiKeyAuthenticationHandler.HeaderName,
+            Description = "A key minted in the web app's Settings. Limited to the sync endpoints."
         };
+
+        // Interactive login, only when a tenant is configured: design-time and GetDocument builds
+        // have none, and new Uri("https:///authorize") would throw.
+        if (!string.IsNullOrWhiteSpace(domain) && !string.IsNullOrWhiteSpace(audience))
+        {
+            document.Components.SecuritySchemes["OAuth2"] = new OpenApiSecurityScheme
+            {
+                Type = SecuritySchemeType.OAuth2,
+                Flows = new OpenApiOAuthFlows
+                {
+                    AuthorizationCode = new OpenApiOAuthFlow
+                    {
+                        // The `audience` parameter is REQUIRED by Auth0. Without it the tenant
+                        // issues an opaque token instead of a JWT and every call 401s.
+                        AuthorizationUrl = new Uri(
+                            $"https://{domain}/authorize?audience={Uri.EscapeDataString(audience)}"),
+                        TokenUrl = new Uri($"https://{domain}/oauth/token"),
+                        Scopes = new Dictionary<string, string>
+                        {
+                            ["openid"] = "OIDC sign-in",
+                            ["profile"] = "Display name",
+                            ["email"] = "Email address",
+                        }
+                    }
+                }
+            };
+        }
 
         document.Security ??= [];
         document.Security.Add(
             new OpenApiSecurityRequirement
             {
-                [new OpenApiSecuritySchemeReference("ApiKey", document, null)] = []
+                [new OpenApiSecuritySchemeReference("Bearer", document, null)] = []
             });
 
         return Task.CompletedTask;
@@ -99,6 +159,8 @@ builder.Services.AddOpenApi(options =>
 
 // CORS: the extension authenticates with a custom X-API-Key header (not cookies), so no
 // credentials are needed. AllowAnyOrigin keeps self-hosted deployments flexible.
+// Do NOT add AllowCredentials() - it is illegal alongside AllowAnyOrigin() and would break the
+// extension. Bearer and X-API-Key are plain headers, already covered by AllowAnyHeader().
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -110,7 +172,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Per-endpoint rate limiting, partitioned by API key (fallback to forwarded client IP).
+// Per-endpoint rate limiting, partitioned by credential (fallback to forwarded client IP).
 // Limits are config-overridable (RateLimiting:{Sync,Writes,Reads}); defaults below.
 var readsLimit = builder.Configuration.GetValue<int?>("RateLimiting:Reads") ?? 200;
 var writesLimit = builder.Configuration.GetValue<int?>("RateLimiting:Writes") ?? 100;
@@ -147,9 +209,24 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
     app.MapScalarApiReference(options =>
     {
-        // Pre-fill the dev API key so endpoints are testable with one click.
-        options.AddApiKeyAuthentication("ApiKey", scheme => scheme.Value = app.Configuration["Authentication:ApiKey"]);
-        options.AddPreferredSecuritySchemes("ApiKey");
+        var clientId = app.Configuration["Auth0:ClientId"];
+        if (!string.IsNullOrWhiteSpace(clientId))
+        {
+            options.AddPreferredSecuritySchemes("OAuth2")
+                   .AddAuthorizationCodeFlow("OAuth2", flow =>
+                   {
+                       // Public SPA client: PKCE, no secret.
+                       flow.ClientId = clientId;
+                       flow.Pkce = Pkce.Sha256;
+                       flow.SelectedScopes = ["openid", "profile", "email"];
+                   })
+                   .WithPersistentAuthentication();
+        }
+        else
+        {
+            // No tenant configured; fall back to pasting a token by hand.
+            options.AddPreferredSecuritySchemes("Bearer");
+        }
     });
 }
 
@@ -163,30 +240,70 @@ if (app.Configuration.GetValue<bool>("Https:Redirect"))
 
 // CORS is retained solely for the browser extension (cross-origin). The web app is same-origin
 // via the gateway and does not rely on it.
+// Before authentication: a CORS preflight carries no credentials and must be answered by the
+// CORS middleware, not challenged by authorization.
 app.UseCors();
 
+// Authentication populates HttpContext.User but never short-circuits.
+app.UseAuthentication();
+
+// Deliberately BETWEEN authentication and authorization. After authentication, so the partition
+// key can see who is calling; before authorization, because AuthorizationMiddleware short-circuits
+// - if the limiter ran last, an unauthenticated caller could hammer token validation and key
+// lookups with no rate limiting at all, which is worse than the shared-key model it replaces.
 app.UseRateLimiter();
+
+app.UseAuthorization();
 
 app.MapDefaultEndpoints();
 
-// Fail fast if the API is exposed without an API key outside development. Skipped during
-// design-time tooling (EF migrations, OpenAPI GetDocument) which run with no configured key.
-if (!IsDesignTimeBuild() && !EF.IsDesignTime && !app.Environment.IsDevelopment() &&
-    string.IsNullOrEmpty(app.Configuration["Authentication:ApiKey"]))
+// Fail fast if the API is exposed without an identity provider outside development. Skipped
+// during design-time tooling (EF migrations, OpenAPI GetDocument) which runs with no tenant.
+if (!IsDesignTimeBuild() && !EF.IsDesignTime && !app.Environment.IsDevelopment())
 {
-    throw new InvalidOperationException(
-        "Authentication:ApiKey must be configured (user-secrets, environment, or Aspire parameter) outside Development.");
+    var missing = new List<string>();
+    if (string.IsNullOrWhiteSpace(app.Configuration["Auth0:Domain"])) missing.Add("Auth0:Domain");
+    if (string.IsNullOrWhiteSpace(app.Configuration["Auth0:Audience"])) missing.Add("Auth0:Audience");
+
+    if (missing.Count > 0)
+    {
+        throw new InvalidOperationException(
+            $"{string.Join(" and ", missing)} must be configured (user-secrets, environment, or Aspire " +
+            "parameter) outside Development. Every /api endpoint requires an Auth0 token or a minted API key.");
+    }
 }
 
-// All /api endpoints require the X-API-Key header. "reads" is the group-default rate-limit
-// policy; mutating and batch endpoints override it (see the endpoint definitions).
+// Public by design: the SPA and the extension need the tenant coordinates BEFORE they can obtain a
+// token, so this cannot sit behind RequireAuthorization. None of it is secret - an OAuth public
+// client id is published in every SPA bundle. Mapped on `app`, so it joins neither the authorized
+// group nor its filters.
+app.MapGet("/api/config", (IOptions<Auth0Options> auth0) => TypedResults.Ok(new
+    {
+        auth0 = new
+        {
+            domain = auth0.Value.Domain,
+            clientId = auth0.Value.ClientId,
+            audience = auth0.Value.Audience,
+        }
+    }))
+   .WithTags("Config")
+   .AllowAnonymous()
+   .RequireRateLimiting("reads");
+
+// Every /api endpoint requires a credential: an Auth0 bearer token, or a minted API key.
+// CurrentUserEndpointFilter then resolves which account is calling, and ApiKeyScopeFilter confines
+// API keys to the handful of endpoints marked [AllowApiKey]. "reads" is the group-default
+// rate-limit policy; mutating and batch endpoints override it (see the endpoint definitions).
 var api = app.MapGroup("/api")
-    .AddEndpointFilter<ApiKeyEndpointFilter>()
+    .RequireAuthorization()
+    .AddEndpointFilter<CurrentUserEndpointFilter>()
+    .AddEndpointFilter<ApiKeyScopeFilter>()
     .RequireRateLimiting("reads");
 api.MapGroup("/bookmarks").MapBookmarkEndpoints().WithTags("Bookmarks");
 api.MapGroup("/tags").MapTagEndpoints().WithTags("Tags");
 api.MapGroup("/categories").MapCategoryEndpoints().WithTags("Categories");
 api.MapGroup("/searches").MapSavedSearchEndpoints().WithTags("Saved searches");
+api.MapGroup("/keys").MapApiKeyEndpoints().WithTags("API keys");
 
 // Initialize database (skip during design-time builds)
 if (!IsDesignTimeBuild())
@@ -203,12 +320,23 @@ static RateLimitPartition<string> FixedWindow(string partitionKey, int permitLim
         Window = TimeSpan.FromMinutes(1),
     });
 
+// Partitioned PER CREDENTIAL, so a runaway extension cannot exhaust the bucket the web app is
+// using. Prefixes keep the three key spaces from colliding.
 static string ClientPartitionKey(HttpContext context)
 {
-    var key = context.Request.Headers[ApiKeyEndpointFilter.HeaderName].ToString();
-    return string.IsNullOrEmpty(key)
-        ? context.Connection.RemoteIpAddress?.ToString() ?? "anonymous"
-        : key;
+    // An API key: limit the key itself, not its owner.
+    var keyId = context.User.FindFirst(ApiKeyAuthenticationHandler.KeyIdClaim)?.Value;
+    if (!string.IsNullOrEmpty(keyId)) return $"key:{keyId}";
+
+    // A signed-in human. MapInboundClaims is off, so "sub" survives verbatim. This is the
+    // VALIDATED subject - never read it from an unverified header, or anyone could forge a
+    // partition key and evict a real user's bucket.
+    var sub = context.User.FindFirst(AuthenticationExtensions.SubClaim)?.Value;
+    if (!string.IsNullOrEmpty(sub)) return $"user:{sub}";
+
+    // Unauthenticated, or a rejected credential. UseForwardedHeaders has already run, so this is
+    // the real client address rather than the gateway's.
+    return $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "anonymous"}";
 }
 
 static bool IsDesignTimeBuild()

@@ -87,3 +87,16 @@ public class UpdateCategoryRequestValidator : AbstractValidator<UpdateCategoryRe
         RuleFor(x => x.Description).MaximumLength(1000);
     }
 }
+
+public class CreateApiKeyRequestValidator : AbstractValidator<CreateApiKeyRequest>
+{
+    public CreateApiKeyRequestValidator()
+    {
+        // The name is what the revoke list shows, so an unlabelled key is a key you dare not revoke.
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
+        RuleFor(x => x.ExpiresInDays)
+            .InclusiveBetween(1, 3650)
+            .When(x => x.ExpiresInDays is not null)
+            .WithMessage("'ExpiresInDays' must be between 1 and 3650, or omitted for a key that never expires.");
+    }
+}

@@ -36,10 +36,33 @@ npm run dev
 **Same-origin, always.** Requests go to a relative `/api/…`, which the YARP gateway routes to
 the API - in dev and in production alike. There is no API base URL to configure, and no CORS.
 
-The **API key** is entered in Settings and kept in the browser's `localStorage`; a `401` sends you
-back there. It is never baked into the bundle: `.env.development` sets `VITE_API_KEY` for local
-convenience only, and Vite ignores that file in a production build - the shipped image contains no
-key. Worth preserving, since the image is public.
+**Authentication is Auth0**, Authorization Code + PKCE. `@auth0/auth0-react` holds the token;
+`src/lib/api-client.ts` attaches it as `Authorization: Bearer` through a token getter registered by
+`src/auth/api-token-bridge.tsx`. That indirection keeps the api-client React-free, because the query
+functions in `src/api` import it and must stay mountable-free. A `401` restarts the login rather
+than routing anywhere.
+
+## Runtime configuration
+
+The Auth0 domain, client id and audience are read at startup from
+`window.__BOOKMARKFEEDER_CONFIG__`, set by `public/config.js`, with `import.meta.env` as the
+development fallback. See `src/config/runtime-config.ts`.
+
+This indirection exists because **the image is built once and shared**. `Dockerfile` runs
+`npm run build` inside the image, so anything from `import.meta.env` is frozen at build time - and
+every self-hoster pulling `mgpeter/bookmarkfeeder-web` has a different Auth0 tenant. At container
+start, `docker-entrypoint.d/40-runtime-config.sh` rewrites `config.js` from environment variables,
+and `nginx.conf` serves it `no-store` so a tenant change is picked up immediately.
+
+It is a classic `<script>` in `index.html`, deliberately not a module: classic scripts run before
+deferred module scripts, so the global exists by the time the bundle evaluates. `Auth0Provider`
+needs the domain and client id at *first render*, which is also why these values are not fetched.
+
+None of it is secret. An OAuth public client id, a tenant domain and an API audience are published
+in every SPA bundle by design.
+
+Running `npm run dev` standalone needs your own `.env.development` values; under the Aspire AppHost
+they arrive as environment variables instead.
 
 ## Layout
 
@@ -49,7 +72,8 @@ src/
   routes.tsx    route tree
   api/          TanStack Query hooks - one file per resource
   components/   shared UI + shadcn primitives in components/ui
-  config/       runtime config
+  auth/         Auth0 provider, route guard, token bridge, splash/error screens
+  config/       runtime config resolution (config.js + import.meta.env)
   features/     bookmarks, tags, categories, dashboard, settings
   layout/       app shell, nav
   lib/          api-client, highlight, formatting, filters

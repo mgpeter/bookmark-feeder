@@ -21,8 +21,13 @@ own NAS. Nothing leaves your network.
   every match rather than just the page you're looking at.
 - **Favicons** - a background worker discovers each site's icon from **its own origin** (never a
   third-party favicon service) and records failures so it never re-asks.
-- **Self-hostable** - four containers behind one YARP gateway, a single exposed port, `X-API-Key`
-  auth, per-endpoint rate limits, health probes, and automatic EF migrations on start.
+- **Accounts** - sign in with Auth0 (OIDC, Authorization Code + PKCE). Every account gets its own
+  isolated collection; nothing is shared between them. Signup is open by default.
+- **Scoped API keys for the extension** - mint one key per browser in Settings, shown once and
+  revocable individually. Keys can upload bookmarks and read tags and categories, and nothing else,
+  so one leaked from a browser profile cannot delete your collection.
+- **Self-hostable** - four containers behind one YARP gateway, a single exposed port, per-endpoint
+  rate limits, health probes, and automatic EF migrations on start.
 
 ### Planned
 
@@ -30,7 +35,6 @@ own NAS. Nothing leaves your network.
   background job queue with cost controls.
 - **Import/export** - browser HTML, Pocket and Instapaper in; JSON/HTML/CSV out.
 - **Scheduled sync** - an MV3 service worker syncing on a timer instead of a button.
-- **Optional multi-user** - currently single-tenant by design (one shared API key).
 
 ## Screenshots
 
@@ -56,7 +60,10 @@ migrations and seeds demo data.
 | **The app** | <http://localhost:5180> - through the gateway, same as production |
 | Aspire dashboard | <https://localhost:17127> (logs, traces, resource health) |
 
-The dev API key is `dev-local-bookmarkfeeder-key`, pre-filled in dev builds.
+Auth0 is required even in development - `localhost` is a secure origin, so sign-in works there
+without any TLS setup of your own. The one-time tenant setup is two CLI commands; see
+[docs/deployment.md](docs/deployment.md). Put the values in AppHost user-secrets, or edit
+`BookmarkFeeder.AppHost/appsettings.Development.json`.
 
 Tests: `dotnet test` (the PostgreSQL integration tests need a container runtime; skip them with
 `--filter Category!=Integration`) and `npm test` in `BookmarkFeeder.Web`.
@@ -69,14 +76,22 @@ Runs on any Docker host. Images are on Docker Hub (`linux/amd64`):
 mgpeter/bookmarkfeeder-webapi    mgpeter/bookmarkfeeder-gateway    mgpeter/bookmarkfeeder-web
 ```
 
+First create an Auth0 tenant (free) and, in it, an API and a SPA application - two `auth0` CLI
+commands, both in [docs/deployment.md](docs/deployment.md). Then:
+
 ```bash
 # copy docker/docker-compose.yaml and docker/.env.nas.template to the host
 cp .env.nas.template .env              # next to docker-compose.yaml
-# set API_KEY, POSTGRES_PASSWORD, GATEWAY_PORT and the three image tags
+# set the AUTH0_* values, POSTGRES_PASSWORD, GATEWAY_PORT and the three image tags
 docker compose up -d
+
+# TLS, which sign-in requires - see below
+tailscale serve --bg --https=443 http://127.0.0.1:8081
+tailscale serve status                 # prints your https://<machine>.<tailnet>.ts.net URL
 ```
 
-Then open `http://<host>:8081` and paste your API key into Settings.
+Open that `ts.net` URL and create an account. The first account to sign in inherits any
+bookmarks that were already there.
 
 What you should know:
 
@@ -87,9 +102,18 @@ What you should know:
   `./data/postgres` beside the compose file). **It is the only thing worth backing up** - everything
   else rebuilds from images.
 - **Deploy by version tag, never `:latest`**, so "which build is running?" has an answer.
-- **TLS is not included.** Put your own reverse proxy in front if you want HTTPS.
-- The API key is the *only* thing protecting your collection. Generate a real one:
-  `openssl rand -base64 32`.
+- **TLS is required**, and this is the one genuinely surprising constraint. Signing in uses PKCE,
+  which needs the browser's Web Crypto API, and browsers expose that only on *secure origins* - so
+  `http://<nas>:8081` cannot log in, failing with an opaque error about `digest`. `localhost` is a
+  secure origin, which is why development is unaffected. `tailscale serve` is the least work: a
+  real Let's Encrypt certificate and a stable hostname, with nothing exposed to the internet.
+  Any other reverse proxy terminating TLS works equally well.
+- **Use `tailscale serve`, not `tailscale funnel`.** Funnel publishes to the open internet, and
+  signup is open by default - anyone who could reach it could create an account on your NAS.
+- **Add your `ts.net` URL to Auth0**, under the application's Allowed Callback URLs, Allowed Logout
+  URLs and Allowed Web Origins. A missing Web Origin fails only on token *refresh*, hours later.
+- **The extension does not use Auth0.** You sign in to the web app and mint it a key, which is
+  limited to syncing.
 
 [**docs/deployment.md**](docs/deployment.md) is a full walkthrough for a Synology NAS, including
 where things live and how to update.
@@ -108,16 +132,24 @@ npm install && npm run build      # -> dist/
 1. Open `chrome://extensions` (or `edge://extensions`) and turn on **Developer mode**
 2. **Load unpacked**, then select `BookmarkFeeder.BrowserExtension/dist` - the build output, not the
    project folder
-3. Open the popup, fill in **Server URL** and **API key**, and hit **Test connection**
+3. In the web app, go to **Settings → API keys**, create a key named after this browser, and copy
+   it. It is shown once
+4. Open the popup, fill in **Server URL** and paste the key, then hit **Test connection**
 
 | Server | Server URL |
 |---|---|
-| Local | `http://localhost:5180/api` (key: `dev-local-bookmarkfeeder-key`) |
-| Self-hosted | `http://<host>:8081/api` (the `API_KEY` from your `.env`) |
+| Local | `http://localhost:5180/api` |
+| Self-hosted | `https://<machine>.<tailnet>.ts.net/api` |
 
 Pick your folders, hit **Sync Now**, and browse them in the dashboard. Re-syncing is safe: duplicates
-are skipped by URL, so several browsers can feed one collection. Settings are stored per browser
-profile, so each browser needs configuring once.
+are skipped by URL, so several browsers can feed one collection.
+
+Give each browser its own key, so you can revoke one machine without disturbing the others. A key
+carries far less authority than your login: it can upload bookmarks and read tags and categories,
+and nothing else.
+
+Local development needs no TLS. The popup runs on `chrome-extension://`, which is already a secure
+origin, and it never talks to Auth0 - so `http://localhost:5180/api` works as-is.
 
 After changing extension code, `npm run build` again and press **reload** on the extension card - the
 popup runs the built bundle. Details in the [extension readme](BookmarkFeeder.BrowserExtension/README.md).
@@ -157,6 +189,8 @@ written **only after a successful push**. See [scripts/README.md](scripts/README
 
 **Backend** - .NET 10 Minimal APIs, Aspire 13, EF Core 10 (DbContext factory, no generic
 repositories), PostgreSQL 18, FluentValidation, OpenAPI + Scalar.
+**Auth** - Auth0 (OIDC) for the web app: Authorization Code + PKCE, RS256 bearer tokens. Hashed,
+sync-scoped API keys for the extension. Per-user data isolation via EF Core named query filters.
 **Frontend** - React 19, Vite 8, TypeScript, Tailwind v4, shadcn/ui, TanStack Query, React Router.
 **Extension** - Chrome/Edge Manifest V3, React + Vite + shadcn via `@crxjs/vite-plugin`.
 **Infrastructure** - YARP gateway, Docker Compose, Docker Hub, Testcontainers.

@@ -5,7 +5,12 @@ orchestration: .NET Aspire 13.4.6 (AppHost + ServiceDefaults)
 orm: Entity Framework Core 10 (DbContext factory pattern, no generic repositories)
 database_system: PostgreSQL (Npgsql provider 10)
 api_documentation: OpenAPI (Microsoft.AspNetCore.OpenApi 10) + Scalar
-api_authentication: Single shared X-API-Key header (endpoint filter)
+api_authentication: Auth0 (OIDC) for the web app - Authorization Code + PKCE, RS256 JWT bearer; hashed sync-scoped API keys for the extension
+identity_provider: Auth0 - one API (audience) + one SPA application; the extension needs neither
+multi_tenancy: User entity + OwnerId, enforced by EF Core 10 NAMED global query filters
+web_auth_library: "@auth0/auth0-react (auth0-spa-js), refresh-token rotation, localStorage cache"
+web_runtime_config: config.js written by the nginx entrypoint from env vars - the web image is prebuilt and shared, so Auth0 values cannot be baked at build time
+tls_termination: tailscale serve (Let's Encrypt via MagicDNS, tailnet-only) - REQUIRED, because crypto.subtle needs a secure origin
 input_validation: FluentValidation
 backend_testing: xUnit + FluentAssertions + WebApplicationFactory
 javascript_framework: React 19

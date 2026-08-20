@@ -53,8 +53,14 @@ public class FaviconBackgroundService(
             var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<BookmarkDbContext>>();
             await using var context = await contextFactory.CreateDbContextAsync(ct);
 
-            // Ids only, and the query filter drops soft-deleted rows.
+            // Ids only, and the SoftDelete filter still drops deleted rows.
+            //
+            // IgnoreQueryFilters(["Owner"]) because this worker runs on its own scope with no HTTP
+            // request, so there is no current user and the owner filter would match NOTHING -
+            // favicon enrichment would silently stop for everyone. Enrichment is deliberately
+            // cross-owner: it reads a URL and writes an icon, and touches nothing user-visible.
             var pending = await context.Bookmarks
+                .IgnoreQueryFilters(["Owner"])
                 .Where(b => b.FaviconFetchedAt == null)
                 .Select(b => b.Id)
                 .ToListAsync(ct);
@@ -94,9 +100,12 @@ public class FaviconBackgroundService(
 
             await using var context = await contextFactory.CreateDbContextAsync(ct);
 
-            // The global query filter excludes soft-deleted bookmarks, so a deleted one is
-            // simply not found and never fetched.
-            var bookmark = await context.Bookmarks.FirstOrDefaultAsync(b => b.Id == bookmarkId, ct);
+            // The SoftDelete filter excludes soft-deleted bookmarks, so a deleted one is simply
+            // not found and never fetched. Owner is dropped for the same reason as the backfill:
+            // no HTTP request means no current user, and the filter would match nothing.
+            var bookmark = await context.Bookmarks
+                .IgnoreQueryFilters(["Owner"])
+                .FirstOrDefaultAsync(b => b.Id == bookmarkId, ct);
             if (bookmark is null) return;
 
             string? favicon = null;

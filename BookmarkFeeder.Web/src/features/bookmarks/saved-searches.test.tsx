@@ -5,11 +5,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 
-vi.mock('@/config/config-context', () => ({
-  getConfig: () => ({ apiKey: 'test-key' }),
-}))
-
+import { setTokenGetter } from '@/lib/api-client'
 import { SavedSearches } from './saved-searches'
+
+setTokenGetter(async () => 'test-token')
 
 const saved = [
   { id: 's1', name: 'GraphQL reading', query: 'q=graphql&tags=dotnet', dateCreated: '2026-07-14T10:00:00Z' },

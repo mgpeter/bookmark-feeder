@@ -48,7 +48,16 @@ async function request(
   if (res.ok) return res
 
   if (res.status === 401) {
-    throw new ApiError(401, 'Unauthorized — check your API key.')
+    throw new ApiError(
+      401,
+      'Key rejected — it may have been revoked or expired. Create a new one in BookmarkFeeder Settings.',
+    )
+  }
+  if (res.status === 403) {
+    // API keys are sync-scoped: they may upload bookmarks and read tags and categories, nothing
+    // else. The extension only calls endpoints on that allow-list, so this firing means the
+    // server's allow-list and this client have drifted apart.
+    throw new ApiError(403, 'This key is limited to syncing and cannot perform that action.')
   }
   if (res.status === 429) {
     const retryAfter = res.headers.get('Retry-After')

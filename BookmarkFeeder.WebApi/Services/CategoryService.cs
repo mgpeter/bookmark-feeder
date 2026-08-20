@@ -135,7 +135,9 @@ public class CategoryService(IDbContextFactory<BookmarkDbContext> contextFactory
         }
 
         // Reassign bookmarks to the target category (or detach them when no target given).
-        var bookmarks = await context.Bookmarks.IgnoreQueryFilters()
+        // Soft-deleted bookmarks still reference the category, so they must be reassigned too -
+        // but only this owner's.
+        var bookmarks = await context.Bookmarks.IgnoreQueryFilters(["SoftDelete"])
             .Where(b => b.CategoryId == id)
             .ToListAsync(ct);
         foreach (var bookmark in bookmarks)

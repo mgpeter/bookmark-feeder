@@ -412,3 +412,7 @@ FodyWeavers.xsd
 /docker/data/
 
 .claude/settings.local.json
+
+# Auth0 CLI session store. `auth0 login` writes it here when run from the repo root, and it holds a
+# live Management API session for the tenant - never commit it.
+.config/

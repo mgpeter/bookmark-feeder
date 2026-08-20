@@ -83,8 +83,16 @@ builder.AddDockerComposeEnvironment("compose")
         }
     });
 
-// Shared API key for the browser extension and web app -> WebApi.
-var apiKey = builder.AddParameter("api-key", secret: true);
+// Auth0 tenant coordinates. NOT secrets: the domain, the API audience and the SPA client id are
+// all public in any browser bundle - they are configuration, not credentials. Declared as
+// parameters so they flow into the emitted compose as ${AUTH0_DOMAIN} etc. and a self-hoster
+// fills them once in the .env beside the compose file.
+//
+// The browser extension needs none of these: it authenticates with a key the user mints in the
+// web app, so it never talks to Auth0 at all.
+var auth0Domain = builder.AddParameter("auth0-domain");
+var auth0Audience = builder.AddParameter("auth0-audience");
+var auth0ClientId = builder.AddParameter("auth0-client-id");
 
 // Supplied explicitly rather than letting AddPostgres generate one: a generated password is a
 // new value on every publish, so the NAS volume would keep the first password while a later .env
@@ -108,7 +116,9 @@ var postgres = builder.AddPostgres("postgres", password: postgresPassword)
 var apiService = builder.AddProject<Projects.BookmarkFeeder_WebApi>("webapi")
     .WithReference(postgres)
     .WaitFor(postgres)
-    .WithEnvironment("Authentication__ApiKey", apiKey)
+    .WithEnvironment("Auth0__Domain", auth0Domain)
+    .WithEnvironment("Auth0__Audience", auth0Audience)
+    .WithEnvironment("Auth0__ClientId", auth0ClientId)
     .PublishAsDockerComposeService((_, service) =>
     {
         service.Restart = "unless-stopped";
@@ -120,6 +130,13 @@ var apiService = builder.AddProject<Projects.BookmarkFeeder_WebApi>("webapi")
 // Internal only — reached through the gateway, not exposed directly. On publish it is built
 // from its Dockerfile (multi-stage: Vite build -> static nginx).
 var web = builder.AddViteApp("web", "../BookmarkFeeder.Web")
+    // VITE_-prefixed deliberately: in dev this is what Vite exposes to the client, and in
+    // production the nginx entrypoint reads the SAME variable names to write config.js. One set of
+    // names for both worlds. The published image is shared by every self-hoster, so these cannot
+    // be baked at build time - see BookmarkFeeder.Web/docker-entrypoint.d/40-runtime-config.sh.
+    .WithEnvironment("VITE_AUTH0_DOMAIN", auth0Domain)
+    .WithEnvironment("VITE_AUTH0_CLIENT_ID", auth0ClientId)
+    .WithEnvironment("VITE_AUTH0_AUDIENCE", auth0Audience)
     .PublishAsDockerFile()
     .PublishAsDockerComposeService((_, service) => service.Restart = "unless-stopped");
 

@@ -12,6 +12,7 @@ public class MigrationAndSeedTests
     public async Task Database_ShouldCreateTablesCorrectly()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("MigrationTest"));
@@ -47,6 +48,7 @@ public class MigrationAndSeedTests
     public async Task Database_ShouldSupportBasicCRUDOperations()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("CRUDTest"));
@@ -99,6 +101,7 @@ public class MigrationAndSeedTests
     public async Task SeedData_ShouldCreateDevelopmentData()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("SeedDataTest"));
@@ -139,6 +142,7 @@ public class MigrationAndSeedTests
     public async Task SeedData_ShouldBeIdempotent()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("IdempotentSeedTest"));
@@ -164,6 +168,7 @@ public class MigrationAndSeedTests
     public async Task Database_ShouldSupportComplexQueries()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("ComplexQueryTest"));

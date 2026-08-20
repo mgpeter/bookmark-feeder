@@ -41,14 +41,27 @@ The popup opens on **Settings** until a server is set.
 
 | Field | Value |
 |---|---|
-| Server URL | your API base URL, e.g. `http://localhost:5180/api` (dev) or `http://<host>:8081/api` |
-| API key | the `X-API-Key` your server is configured with |
+| Server URL | your API base URL, e.g. `http://localhost:5180/api` (dev) or `https://<machine>.<tailnet>.ts.net/api` |
+| API key | a key you mint in the web app under **Settings → API keys** |
+
+The key is **not** a server-wide secret any more: you sign in to the web app, create a key, and it
+belongs to your account. It is displayed once, so paste it here straight away - only a hash is
+stored, and a lost key can only be replaced.
+
+Create one key per browser. Revoking a key signs out just that browser. A key can upload bookmarks
+and read tags and categories; it cannot delete anything or manage keys, so one leaked from a
+browser profile cannot damage your collection.
 
 **Test connection** verifies both, then pick folders and hit **Sync Now**. The **Dashboard** button
 opens the web app, derived from the server URL by dropping the trailing `/api`.
 
 Settings live in `chrome.storage.sync`, which is **per browser profile** - each browser you install
 into needs configuring once.
+
+The extension never talks to Auth0, which is deliberate: an MV3 popup doing OAuth would need a
+pinned extension id, a second Auth0 application and refresh-token handling, and would end up with
+*more* authority than syncing requires. It also means the extension keeps working when the server
+cannot reach Auth0, since key validation is entirely local. See DEC-008.
 
 ## Package for distribution
 

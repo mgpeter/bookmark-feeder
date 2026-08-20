@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using BookmarkFeeder.WebApi.Auth;
 using BookmarkFeeder.WebApi.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -11,12 +13,14 @@ namespace BookmarkFeeder.WebApi.Tests.Infrastructure;
 
 /// <summary>
 /// Boots the real WebApi pipeline against a disposable PostgreSQL container (Testcontainers),
-/// so behaviors EF InMemory can't model — the unique Url index, ILIKE search, soft-delete ×
-/// unique interaction, and FK cascade/SetNull — are exercised against a real database.
+/// so behaviors EF InMemory can't model — the per-owner unique indexes, full-text search,
+/// soft-delete × unique interaction, and FK cascade/SetNull — are exercised against a real
+/// database. Authentication uses locally signed tokens; no test contacts Auth0.
 /// </summary>
 public class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    public const string TestApiKey = "test-key";
+    public const string DefaultSub = "auth0|test-user-a";
+    public const string OtherSub = "auth0|test-user-b";
 
     // Same image and major version the AppHost pins for dev and production. Tests previously ran
     // 17-alpine while production emitted 18.x, so the suite validated a major version nothing
@@ -42,7 +46,8 @@ public class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
-        builder.UseSetting("Authentication:ApiKey", TestApiKey);
+        builder.UseSetting("Auth0:Domain", "bookmarkfeeder-tests.local");
+        builder.UseSetting("Auth0:Audience", TestTokens.Audience);
         builder.UseSetting("RateLimiting:Reads", "1000000");
         builder.UseSetting("RateLimiting:Writes", "1000000");
         builder.UseSetting("RateLimiting:Sync", "1000000");
@@ -53,28 +58,70 @@ public class PostgresApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
 
         builder.ConfigureServices(services =>
         {
+            BookmarkApiFactory.ConfigureTestJwtBearer(services);
+
             services.RemoveAll<IDbContextFactory<BookmarkDbContext>>();
             services.RemoveAll<DbContextOptions<BookmarkDbContext>>();
             services.RemoveAll<DbContextOptions>();
             services.RemoveAll<BookmarkDbContext>();
             services.RemoveAll(typeof(IDbContextOptionsConfiguration<BookmarkDbContext>));
 
-            services.AddDbContextFactory<BookmarkDbContext>(options =>
-                options.UseNpgsql(_container.GetConnectionString()));
+            // Scoped, mirroring Program.cs — BookmarkDbContext needs the scoped ICurrentUserContext.
+            services.AddDbContextFactory<BookmarkDbContext>(
+                options => options.UseNpgsql(_container.GetConnectionString()),
+                ServiceLifetime.Scoped);
             services.AddScoped(sp =>
                 sp.GetRequiredService<IDbContextFactory<BookmarkDbContext>>().CreateDbContext());
         });
     }
 
-    public HttpClient CreateAuthenticatedClient()
+    public HttpClient CreateAuthenticatedClient(string sub = DefaultSub)
     {
         var client = CreateClient();
-        client.DefaultRequestHeaders.Add("X-API-Key", TestApiKey);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", TestTokens.Create(sub));
         return client;
     }
 
-    public BookmarkDbContext CreateContext() =>
-        Services.GetRequiredService<IDbContextFactory<BookmarkDbContext>>().CreateDbContext();
+    /// <summary>A client authenticating the way the browser extension does.</summary>
+    public HttpClient CreateKeyClient(string apiKey)
+    {
+        var client = CreateClient();
+        client.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+        return client;
+    }
+
+    /// <summary>
+    /// A context for direct assertions, sourced from a scope with an explicit owner. Passing null
+    /// yields an UNSCOPED context (owner Guid.Empty) that sees nothing — combine it with
+    /// IgnoreQueryFilters(["Owner"]) when asserting across accounts.
+    /// </summary>
+    public BookmarkDbContext CreateContext(Guid? ownerId = null)
+    {
+        var scope = Services.CreateScope();
+
+        if (ownerId is { } id && id != Guid.Empty)
+        {
+            scope.ServiceProvider.GetRequiredService<ICurrentUserContext>().Set(id);
+        }
+
+        return scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<BookmarkDbContext>>()
+            .CreateDbContext();
+    }
+
+    /// <summary>
+    /// The user id a subject was provisioned as. Only meaningful after that subject has made at
+    /// least one request, since accounts are created just-in-time.
+    /// </summary>
+    public async Task<Guid> OwnerIdForAsync(string sub = DefaultSub)
+    {
+        await using var context = CreateContext();
+        return await context.Users
+            .Where(u => u.Auth0Sub == sub)
+            .Select(u => u.Id)
+            .FirstAsync();
+    }
 
     async Task IAsyncLifetime.DisposeAsync()
     {

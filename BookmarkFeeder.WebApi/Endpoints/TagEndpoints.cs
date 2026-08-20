@@ -10,6 +10,8 @@ public static class TagEndpoints
     {
         group.MapGet("/", async (ITagService service, CancellationToken ct) =>
                 TypedResults.Ok(await service.GetAllAsync(ct)))
+            // Read-only, and what the extension's "Test connection" calls.
+            .WithMetadata(new AllowApiKeyAttribute())
             .WithName("GetTags");
 
         group.MapPost("/", async (CreateTagRequest request, ITagService service, CancellationToken ct) =>

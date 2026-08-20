@@ -3,11 +3,10 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 
-vi.mock('@/config/config-context', () => ({
-  getConfig: () => ({ apiKey: 'test-key' }),
-}))
-
+import { setTokenGetter } from '@/lib/api-client'
 import { useMarkAllRead } from './bookmarks'
+
+setTokenGetter(async () => 'test-token')
 
 function wrapper({ children }: { children: ReactNode }) {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })

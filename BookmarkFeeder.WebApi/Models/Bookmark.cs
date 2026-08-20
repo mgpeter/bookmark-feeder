@@ -2,9 +2,14 @@ using NpgsqlTypes;
 
 namespace BookmarkFeeder.WebApi.Models;
 
-public class Bookmark
+public class Bookmark : IOwnedEntity
 {
     public Guid Id { get; set; }
+
+    /// <summary>The account this belongs to. Enforced by the "Owner" global query filter.</summary>
+    public Guid OwnerId { get; set; }
+    public User Owner { get; set; } = null!;
+
     public string Url { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }

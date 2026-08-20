@@ -37,6 +37,9 @@ public static class BookmarkEndpoints
                 TypedResults.Ok(await service.CreateBatchAsync(request, ct)))
             .AddEndpointFilter<ValidationFilter<BatchCreateRequest>>()
             .WithName("CreateBookmarksBatch")
+            // The browser extension's whole reason for existing. One of only three endpoints a
+            // minted API key can reach; see ApiKeyScopeFilter.
+            .WithMetadata(new AllowApiKeyAttribute())
             .RequireRateLimiting("sync");
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateBookmarkRequest request, IBookmarkService service, CancellationToken ct) =>

@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
@@ -47,7 +48,8 @@ public class FaviconEnqueueTests(BookmarkApiFactory factory) : IClassFixture<Boo
                 services.AddSingleton<IFaviconQueue>(spy);
             }))
             .CreateClient();
-        client.DefaultRequestHeaders.Add("X-API-Key", BookmarkApiFactory.TestApiKey);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", TestTokens.Create(BookmarkApiFactory.DefaultSub));
         return (client, spy);
     }
 

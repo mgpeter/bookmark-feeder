@@ -10,6 +10,8 @@ public static class CategoryEndpoints
     {
         group.MapGet("/", async (ICategoryService service, CancellationToken ct) =>
                 TypedResults.Ok(await service.GetTreeAsync(ct)))
+            // Read-only; kept reachable so the extension can grow a category picker.
+            .WithMetadata(new AllowApiKeyAttribute())
             .WithName("GetCategories");
 
         group.MapPost("/", async (CreateCategoryRequest request, ICategoryService service, CancellationToken ct) =>

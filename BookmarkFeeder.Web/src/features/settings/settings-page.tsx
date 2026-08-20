@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useAuth0 } from '@auth0/auth0-react'
 import { toast } from 'sonner'
-import { useConfig } from '@/config/config-context'
+import { api, ApiError } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -11,70 +11,78 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { ApiKeysCard } from './api-keys-card'
 
 export function SettingsPage() {
-  const { apiKey, setConfig } = useConfig()
-  const navigate = useNavigate()
-  const [key, setKey] = useState(apiKey)
+  const { user, logout } = useAuth0()
   const [testing, setTesting] = useState(false)
 
   async function testConnection() {
     setTesting(true)
     try {
-      // Same-origin call through the gateway; only the key varies.
-      const res = await fetch('/api/tags', { headers: { 'X-API-Key': key } })
-      if (res.ok) toast.success('Connection successful')
-      else if (res.status === 401) toast.error('Unauthorized — check the API key')
-      else toast.error(`Server responded with ${res.status}`)
-    } catch {
-      toast.error('Could not reach the server')
+      // No manual header: the api-client attaches the bearer token itself.
+      await api.get('/tags')
+      toast.success('Connection successful')
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : 'Could not reach the server')
     } finally {
       setTesting(false)
     }
-  }
-
-  function save() {
-    setConfig({ apiKey: key.trim() })
-    toast.success('Settings saved')
-    navigate('/')
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Settings</h1>
-        <p className="text-muted-foreground">Connect this app to your BookmarkFeeder API.</p>
+        <p className="text-muted-foreground">Your account and the keys your browsers sync with.</p>
       </div>
 
-      <Card className="max-w-xl">
+      <Card className="max-w-3xl">
         <CardHeader>
-          <CardTitle>API key</CardTitle>
-          <CardDescription>
-            The app talks to the API at this site's own origin. Your key is stored
-            locally in this browser and sent as the
-            <code className="mx-1 rounded bg-muted px-1 py-0.5 text-xs">X-API-Key</code>
-            header.
-          </CardDescription>
+          <CardTitle>Account</CardTitle>
+          <CardDescription>Signed in through Auth0.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="apiKey">API key</Label>
-            <Input
-              id="apiKey"
-              type="password"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="Your X-API-Key value"
-            />
+        <CardContent className="space-y-3">
+          <div className="flex items-center gap-3">
+            {user?.picture && (
+              <img src={user.picture} alt="" className="size-10 rounded-full" />
+            )}
+            <div className="min-w-0">
+              <p className="truncate font-medium">{user?.name ?? 'Signed in'}</p>
+              <p className="truncate text-sm text-muted-foreground">{user?.email}</p>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">
+              Your bookmarks are scoped to this identity. Quote it if you ever report a problem.
+            </p>
+            <code className="block truncate rounded bg-muted px-2 py-1 text-xs">{user?.sub}</code>
           </div>
         </CardContent>
-        <CardFooter className="gap-2">
-          <Button onClick={save} disabled={!key}>
-            Save
+        <CardFooter>
+          <Button
+            variant="outline"
+            onClick={() => void logout({ logoutParams: { returnTo: window.location.origin } })}
+          >
+            Sign out
           </Button>
-          <Button variant="outline" onClick={testConnection} disabled={!key || testing}>
+        </CardFooter>
+      </Card>
+
+      <div className="max-w-3xl">
+        <ApiKeysCard />
+      </div>
+
+      <Card className="max-w-3xl">
+        <CardHeader>
+          <CardTitle>Connection</CardTitle>
+          <CardDescription>
+            This app talks to the API at its own origin, so there is no server URL to configure. It
+            authenticates with a token from Auth0 that is refreshed for you.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button variant="outline" onClick={testConnection} disabled={testing}>
             {testing ? 'Testing…' : 'Test connection'}
           </Button>
         </CardFooter>

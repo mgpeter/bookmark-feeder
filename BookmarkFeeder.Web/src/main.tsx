@@ -2,32 +2,36 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { RouterProvider } from 'react-router-dom'
-import { ConfigProvider } from '@/config/config-context'
+import { AuthProvider } from '@/auth/auth-provider'
+import { ApiTokenBridge } from '@/auth/api-token-bridge'
 import { Toaster } from '@/components/ui/sonner'
-import { setUnauthorizedHandler } from '@/lib/api-client'
+import { ApiError } from '@/lib/api-client'
 import { router } from '@/routes'
 import './index.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, staleTime: 30_000, refetchOnWindowFocus: false },
+    queries: {
+      // A 401 already has a recovery path: the unauthorized handler restarts the Auth0 login.
+      // Retrying one would fire that handler twice and race two redirects, so 401 is excluded
+      // from the single retry everything else gets.
+      retry: (failureCount, error) =>
+        !(error instanceof ApiError && error.status === 401) && failureCount < 1,
+      staleTime: 30_000,
+      refetchOnWindowFocus: false,
+    },
   },
-})
-
-// On a 401 from the API, send the user to Settings to fix the key.
-setUnauthorizedHandler(() => {
-  if (window.location.pathname !== '/settings') {
-    window.location.assign('/settings')
-  }
 })
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ConfigProvider>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-        <Toaster richColors />
-      </QueryClientProvider>
-    </ConfigProvider>
+    <AuthProvider>
+      <ApiTokenBridge>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+          <Toaster richColors />
+        </QueryClientProvider>
+      </ApiTokenBridge>
+    </AuthProvider>
   </StrictMode>,
 )

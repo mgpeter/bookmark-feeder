@@ -1,6 +1,7 @@
 using BookmarkFeeder.WebApi.Data;
 using BookmarkFeeder.WebApi.Models;
 using BookmarkFeeder.WebApi.Services;
+using BookmarkFeeder.WebApi.Tests.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +49,7 @@ public class FaviconBackgroundServiceTests
         var resolver = new FakeResolver();
         var queue = new FaviconQueue();
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         services.AddLogging();
         services.AddDbContextFactory<BookmarkDbContext>(o =>
             o.UseInMemoryDatabase($"favicon-{Guid.NewGuid()}"));

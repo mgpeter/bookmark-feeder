@@ -8,8 +8,8 @@ tested (56 backend tests passing).
 - [x] .NET 10 + Aspire 13 upgrade across all projects
 - [x] Bookmark / Tag / Category data model on EF Core 10 + PostgreSQL (soft delete, unique URL, single join table)
 - [x] Full REST API - Bookmarks/Tags/Categories CRUD, batch sync, pagination + filtering, duplicate detection `L`
-- [x] X-API-Key authentication (endpoint filter) + OpenAPI/Scalar with pre-filled dev key
-- [x] Browser extension end-to-end sync (recursive folder traversal, batch upload with API key) `M`
+- [x] X-API-Key authentication (endpoint filter) + OpenAPI/Scalar with pre-filled dev key *(superseded by DEC-008)*
+- [x] Browser extension end-to-end sync (recursive folder traversal, batch upload with API key) `M` *(the key is now per-user, DEC-008)*
 - [x] Database migration, dev seed data, and integration tests `M`
 
 ## Phase 1: Web Frontend
@@ -20,7 +20,7 @@ tested (56 backend tests passing).
 ### Features
 
 - [x] Scaffold (React + Vite + Tailwind v4 + shadcn/ui) + Aspire `AddViteApp` wiring `M`
-- [x] API connection: Settings screen (URL + X-API-Key), fetch client, 401→Settings, TanStack Query layer `S`
+- [x] API connection: Settings screen (URL + X-API-Key), fetch client, 401→Settings, TanStack Query layer `S` *(superseded by DEC-008)*
 - [x] App shell, sidebar navigation, dashboard with live counts `S`
 - [x] Bookmark list: search, tag/category/read filters, sort, grid/list, pagination, quick actions `L`
 - [x] Bookmark edit dialog (retag, recategorize, mark read) `M`
@@ -84,15 +84,36 @@ tested (56 backend tests passing).
 
 ## Phase 5: Advanced (Future)
 
-**Goal:** Round out import/export, richer metadata, and optional multi-user.
+**Goal:** Round out import/export and richer metadata. (Multi-user shipped early - see Phase 6.)
 
 ### Features
 
 - [ ] Import from browser HTML / Pocket / Instapaper; export JSON/HTML/CSV `L`
 - [x] Favicon enrichment service `M` (content extraction not built)
 - [ ] Scheduled/background extension sync `M`
-- [ ] Optional multi-user (User entity + JWT, per-user data) `XL`
+- [x] Multi-user - moved to Phase 6 and delivered ahead of schedule `XL`
 
 ### Dependencies
 
 - Phases 2-4
+
+## Phase 6: Multi-User (Delivered)
+
+**Goal:** Real accounts and per-user data isolation, so the deployment can be shared without
+sharing the collection.
+**Success Criteria:** Two accounts see two independent collections; neither can read, modify or
+even detect the other's, proven by integration tests. The browser extension authenticates with a
+key that cannot delete anything.
+
+### Features
+
+- [x] Auth0 sign-in for the web app (OIDC, Authorization Code + PKCE, RS256 bearer) `L`
+- [x] User entity + just-in-time provisioning; the first login claims the pre-migration collection `M`
+- [x] OwnerId on Bookmark/Tag/Category/SavedSearch, enforced by EF Core 10 named query filters `L`
+- [x] Per-user, sync-scoped API keys for the extension: hashed, shown once, individually revocable `M`
+- [x] Per-credential rate limiting; per-owner unique indexes; runtime Auth0 config for the prebuilt web image `M`
+
+### Dependencies
+
+- An Auth0 tenant (free tier)
+- TLS in front of the gateway - see DEC-008

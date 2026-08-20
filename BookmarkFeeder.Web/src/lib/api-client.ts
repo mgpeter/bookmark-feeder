@@ -1,5 +1,3 @@
-import { getConfig } from '@/config/config-context'
-
 export class ApiError extends Error {
   status: number
   body?: unknown
@@ -15,9 +13,24 @@ export class ApiError extends Error {
 type UnauthorizedHandler = () => void
 let onUnauthorized: UnauthorizedHandler | null = null
 
-/** Registered by the app so a 401 can route the user to Settings. */
+/** Registered by the app so a 401 can restart the Auth0 login. */
 export function setUnauthorizedHandler(handler: UnauthorizedHandler): void {
   onUnauthorized = handler
+}
+
+type TokenGetter = () => Promise<string | null>
+
+// Default: no token. A request made before the bridge registers goes out unauthenticated and
+// earns an honest 401, which is better than silently forging one with stale state.
+let getToken: TokenGetter = async () => null
+
+/**
+ * Registered by ApiTokenBridge. Deliberately a plain module hook rather than a React import: this
+ * client is used by the query functions in src/api/*, which must stay React-free and testable
+ * without mounting a provider. Mirrors setUnauthorizedHandler above.
+ */
+export function setTokenGetter(getter: TokenGetter): void {
+  getToken = getter
 }
 
 function buildUrl(path: string, params?: Record<string, unknown>): string {
@@ -44,20 +57,20 @@ async function request<T>(
   path: string,
   { params, body }: RequestOptions = {},
 ): Promise<T> {
-  const { apiKey } = getConfig()
+  const token = await getToken()
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
 
   const res = await fetch(buildUrl(path, params), {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-API-Key': apiKey,
-    },
+    headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
 
   if (res.status === 401) {
     onUnauthorized?.()
-    throw new ApiError(401, 'Unauthorized — check your API key.')
+    throw new ApiError(401, 'Your session has expired — signing you back in.')
   }
 
   if (!res.ok) {

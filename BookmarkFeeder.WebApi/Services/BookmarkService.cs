@@ -119,7 +119,11 @@ public class BookmarkService(
         await using var context = await contextFactory.CreateDbContextAsync(ct);
 
         var url = request.Url.Trim();
-        var exists = await context.Bookmarks.IgnoreQueryFilters().AnyAsync(b => b.Url == url, ct);
+        // Only SoftDelete is dropped: the unique index still covers soft-deleted rows, so a
+        // resurrected URL must be caught. The Owner filter STAYS - without it this would report a
+        // duplicate because somebody else saved that URL, leaking that they did.
+        var exists = await context.Bookmarks.IgnoreQueryFilters(["SoftDelete"])
+            .AnyAsync(b => b.Url == url, ct);
         if (exists)
         {
             return (null, BookmarkError.Duplicate);
@@ -243,6 +247,8 @@ public class BookmarkService(
 
         // Pre-load URLs that already exist (ignoring the soft-delete filter, because the unique
         // index still covers soft-deleted rows) to detect duplicates in a single round-trip.
+        // Named filter, so ownership survives: dropping ALL filters here would make a new user's
+        // first sync skip almost everything as "already present" because somebody else had it.
         var incomingUrls = items
             .Select(i => i.Url?.Trim())
             .Where(u => !string.IsNullOrEmpty(u))
@@ -252,7 +258,7 @@ public class BookmarkService(
 
         var existingUrls = incomingUrls.Count == 0
             ? []
-            : await context.Bookmarks.IgnoreQueryFilters()
+            : await context.Bookmarks.IgnoreQueryFilters(["SoftDelete"])
                 .Where(b => incomingUrls.Contains(b.Url))
                 .Select(b => b.Url)
                 .ToListAsync(ct);

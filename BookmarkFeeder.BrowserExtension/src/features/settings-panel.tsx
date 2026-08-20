@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { testConnection } from '@/lib/api'
+import { dashboardUrl, testConnection } from '@/lib/api'
 import type { Settings } from '@/lib/types'
 
 interface SettingsPanelProps {
@@ -82,8 +82,26 @@ export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
           type="password"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          placeholder="Your X-API-Key value"
+          placeholder="bmf_…"
         />
+        <p className="text-xs text-muted-foreground">
+          Sign in to BookmarkFeeder and create a key under{' '}
+          <button
+            type="button"
+            className="underline underline-offset-2 hover:text-foreground"
+            onClick={() => {
+              const trimmed = serverUrl.trim()
+              if (urlProblem(trimmed)) {
+                setError(urlProblem(trimmed))
+                return
+              }
+              void chrome.tabs.create({ url: `${dashboardUrl(trimmed)}/settings` })
+            }}
+          >
+            Settings
+          </button>
+          . It is shown once, so paste it here straight away. Give each browser its own key.
+        </p>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

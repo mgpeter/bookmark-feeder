@@ -1,3 +1,4 @@
+using BookmarkFeeder.WebApi.Auth;
 using BookmarkFeeder.WebApi.Data;
 using BookmarkFeeder.WebApi.Models;
 using FluentAssertions;
@@ -12,7 +13,8 @@ public class ModelRegressionTests
         var options = new DbContextOptionsBuilder<BookmarkDbContext>()
             .UseInMemoryDatabase($"model-{Guid.NewGuid()}")
             .Options;
-        return new BookmarkDbContext(options);
+        // Model shape only, so an unresolved owner is fine — no query is ever executed here.
+        return new BookmarkDbContext(options, new CurrentUserContext());
     }
 
     [Fact]

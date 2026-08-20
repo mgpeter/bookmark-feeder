@@ -12,6 +12,7 @@ public class DbContextFactoryTests
     public void DbContextFactory_ShouldBeRegisteredInDI()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("FactoryRegistrationTest"));
@@ -26,6 +27,7 @@ public class DbContextFactoryTests
     public void DbContextFactory_ShouldCreateMultipleIndependentContexts()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("MultipleContextsTest"));
@@ -45,6 +47,7 @@ public class DbContextFactoryTests
     public async Task DbContextFactory_CreatedContexts_ShouldHaveCorrectDbSets()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("DbSetsTest"));
@@ -65,6 +68,7 @@ public class DbContextFactoryTests
     public async Task DbContext_SoftDeleteFilter_ShouldFilterDeletedBookmarks()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("SoftDeleteTest"));
@@ -110,6 +114,7 @@ public class DbContextFactoryTests
     public async Task DbContext_EntityConfigurations_ShouldHaveCorrectIndexes()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("ConstraintsTest"));
@@ -159,6 +164,7 @@ public class DbContextFactoryTests
     public async Task DbContext_BookmarkTagRelationship_ShouldWorkCorrectly()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("RelationshipTest"));
@@ -216,6 +222,7 @@ public class DbContextFactoryTests
     public async Task DbContext_CategoryHierarchy_ShouldWorkCorrectly()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("CategoryHierarchyTest"));
@@ -267,6 +274,7 @@ public class DbContextFactoryTests
     public async Task DbContext_TagNormalization_ShouldHaveUniqueIndex()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("TagNormalizationTest"));

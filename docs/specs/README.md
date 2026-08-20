@@ -17,7 +17,9 @@ each spec's `tasks.md`.
 
 ## In progress
 
-Nothing in flight.
+| Spec | What it adds | Notes |
+|---|---|---|
+| [auth0-multi-user](2026-08-20-auth0-multi-user/) | Auth0 sign-in, per-user data isolation, minted sync-scoped API keys for the extension | Code and tests complete (139 unit + 58 integration). Outstanding: the deployment itself - Auth0 tenant, `tailscale serve`, and an end-to-end run on the NAS. Supersedes DEC-003 |
 
 ## Planned
 
@@ -63,7 +65,11 @@ Not spec-scoped; each needs its own change.
   from `17-alpine` to match, so the suite tests the version that ships. Volume name and compose
   project name pinned too; both previously depended on a hash or a folder name.
 - ⚠️ **The extension has not been pointed at the NAS.** Sync is proven against the dev gateway, not
-  `http://<nas>:8081/api` - the last unverified link in the chain.
+  the NAS - the last unverified link in the chain. Worth re-testing now that the target is
+  `https://<machine>.<tailnet>.ts.net/api`: Chrome blocks requests from `chrome-extension://` (a
+  secure context) to plain-`http://` non-localhost origins, so `http://<nas>:8081/api` may never
+  have been reachable from the popup at all. If so, moving to HTTPS removes that whole class of
+  failure and this issue can be closed.
 - **Favicon enrichment has never run against the real collection.** All 434 bookmarks still have
   `faviconUrl: null`; the backfill queues them on the next AppHost start. Until then, resolution
   rates and the politeness limits are only proven against stubs.

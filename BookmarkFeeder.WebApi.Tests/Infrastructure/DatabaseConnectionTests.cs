@@ -13,6 +13,7 @@ public class DatabaseConnectionTests
     public void DatabaseHealthCheck_ShouldBeRegistered()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         // Add required services for health checks
         services.AddLogging();
@@ -30,6 +31,7 @@ public class DatabaseConnectionTests
     {
         // Test that we can configure a DbContext with different connection strings
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         // Add in-memory database for testing
         services.AddDbContext<BookmarkDbContext>(options =>
@@ -52,6 +54,7 @@ public class DatabaseConnectionTests
     public void DbContextFactory_ShouldBeConfigurable()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         // Test DbContext factory registration
         services.AddDbContextFactory<BookmarkDbContext>(options =>
@@ -67,6 +70,7 @@ public class DatabaseConnectionTests
     public void DbContextFactory_ShouldCreateWorkingContext()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("WorkingContextTest"));
@@ -83,6 +87,7 @@ public class DatabaseConnectionTests
     public async Task DbContextFactory_ShouldSupportMultipleInstances()
     {
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         services.AddDbContextFactory<BookmarkDbContext>(options =>
             options.UseInMemoryDatabase("MultiInstanceTest"));
@@ -110,6 +115,7 @@ public class DatabaseConnectionTests
     {
         // Test that we can configure connection strings through options pattern
         var services = new ServiceCollection();
+        services.AddTestCurrentUser();
         
         var testConnectionString = "User ID=test;Password=test;Host=localhost;Port=5432;Database=bookmarkfeeder_test;";
         

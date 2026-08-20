@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net;
 using System.Net.Http.Json;
 using BookmarkFeeder.WebApi.Dtos;
@@ -13,10 +14,12 @@ public class RateLimitTests
     private static WebApplicationFactory<Program> LowWriteLimitFactory(BookmarkApiFactory factory) =>
         factory.WithWebHostBuilder(b => b.UseSetting("RateLimiting:Writes", "2"));
 
-    private static HttpClient AuthClient(WebApplicationFactory<Program> f)
+    private static HttpClient AuthClient(
+        WebApplicationFactory<Program> f, string sub = BookmarkApiFactory.DefaultSub)
     {
         var client = f.CreateClient();
-        client.DefaultRequestHeaders.Add("X-API-Key", BookmarkApiFactory.TestApiKey);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", TestTokens.Create(sub));
         return client;
     }
 

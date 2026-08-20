@@ -143,3 +143,23 @@ export interface UpdateCategoryRequest {
   description?: string | null
   parentCategoryId?: string | null
 }
+
+/** API key metadata. Carries no secret, so it is safe to hold in the query cache. */
+export interface ApiKey {
+  id: string
+  name: string
+  /** Display identity, e.g. "bmf_7Kd9". Not enough to authenticate with. */
+  prefix: string
+  createdAt: string
+  lastUsedAt?: string | null
+  expiresAt?: string | null
+  revokedAt?: string | null
+}
+
+/**
+ * The create response, and the only shape that ever carries the plaintext key. Deliberately kept
+ * out of the query cache - it is rendered once and then dropped.
+ */
+export interface CreatedApiKey extends Omit<ApiKey, 'lastUsedAt' | 'revokedAt'> {
+  key: string
+}

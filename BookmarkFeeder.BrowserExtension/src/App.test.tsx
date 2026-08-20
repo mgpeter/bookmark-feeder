@@ -83,7 +83,7 @@ describe('App', () => {
 
     await user.click(await screen.findByRole('button', { name: /sync now/i }))
 
-    expect(await screen.findByText(/check your api key/i)).toBeInTheDocument()
+    expect(await screen.findByText(/key rejected/i)).toBeInTheDocument()
   })
 
   it('opens the dashboard in a new tab at the origin derived from the server URL', async () => {

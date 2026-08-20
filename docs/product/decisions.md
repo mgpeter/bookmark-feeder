@@ -62,7 +62,7 @@ lifetimes explicit and avoids leaky repository abstractions.
 ## 2026-07-09: Single-User X-API-Key Auth for MVP
 
 **ID:** DEC-003
-**Status:** Accepted
+**Status:** Superseded by DEC-008 (2026-08-20)
 **Category:** Technical
 **Stakeholders:** Tech Lead
 
@@ -191,3 +191,89 @@ from DEC-005 is unchanged.
 clean separation of concerns, identical dev/prod routing.
 **Negative:** One more service (the gateway) to run and publish; Vite HMR must be
 configured to work through the gateway in dev.
+
+## 2026-08-20: Auth0 for People, Minted API Keys for the Extension
+
+**ID:** DEC-008
+**Status:** Accepted
+**Category:** Technical
+**Stakeholders:** Product Owner, Tech Lead
+**Supersedes:** DEC-003
+**Related Spec:** @docs/specs/2026-08-20-auth0-multi-user/
+
+### Decision
+
+Authentication splits by client.
+
+**The web app uses Auth0** - OIDC, Authorization Code + PKCE, RS256 bearer tokens validated by the
+API against the tenant's JWKS. Signup is open: any Auth0 identity gets an account, provisioned
+just-in-time on its first authenticated request.
+
+**The browser extension uses a per-user API key**, minted by the signed-in user in the web app's
+Settings and pasted into the popup. Keys are stored as a SHA-256 hash with a unique index, shown in
+plaintext exactly once, named, individually revocable, and optionally expiring. They are
+**sync-scoped**: an endpoint filter denies them by default and permits only three routes
+(`POST /api/bookmarks/batch`, `GET /api/tags`, `GET /api/categories`).
+
+The API is now **multi-tenant**. A `User` entity plus `OwnerId` on Bookmark, Tag, Category and
+SavedSearch, scoped by EF Core 10 *named* global query filters. The shared `X-API-Key` is gone
+entirely.
+
+### Context
+
+DEC-003 chose one shared secret, which was right for a single-user MVP and wrong for everything
+after it: no rotation path, no per-user attribution, and one leaked string granting full read/write
+over the whole collection. The roadmap already carried "Optional multi-user (User entity + JWT,
+per-user data)" as a Phase 5 item.
+
+### Rationale
+
+Rolling our own identity would mean owning password storage, reset flows, and session management -
+all of which are easy to get subtly wrong and none of which are what this project is about. Auth0's
+free tier comfortably covers a personal deployment.
+
+The extension deliberately does *not* do OAuth. An MV3 popup PKCE flow costs a pinned extension id,
+a second Auth0 application, `chrome.identity`, and careful handling of refresh-token rotation races
+- and it would end up granting the extension *more* authority than it needs. A minted, sync-scoped
+key is less code and a smaller blast radius. It also keeps the extension working when the host
+cannot reach Auth0, since key validation is entirely local.
+
+Named query filters (new in EF Core 10) are what make the ownership change tractable: soft-delete
+and ownership coexist as separate, individually droppable filters, so the URL-dedupe pre-checks can
+ignore soft-delete while staying owner-scoped, and the favicon worker can ignore ownership while
+staying soft-delete-aware. With a single anonymous filter both would have been all-or-nothing, and
+both would have leaked across accounts.
+
+SHA-256 rather than bcrypt/argon2 for the keys: a 256-bit random token has no guessable structure,
+so hash cost buys nothing while adding latency to every request. That reasoning applies to random
+tokens, not to passwords.
+
+### Deviation
+
+Two costs, both accepted deliberately.
+
+**A third-party dependency**, against a project whose pitch is "nothing leaves your network". Only
+*identity* leaves - an email address and a subject id. Bookmarks never do. The alternative, a
+self-hosted identity provider such as Keycloak or Authentik, is a fifth container to run, back up
+and upgrade, which is a poor trade for a personal deployment.
+
+**TLS stops being optional.** `auth0-spa-js` derives its PKCE challenge with `crypto.subtle`, which
+browsers expose only on secure origins, so the previously documented "TLS is not included, add a
+proxy if you want HTTPS" no longer holds - a plain `http://<nas>:8081` cannot sign in at all.
+`tailscale serve` covers it with a real certificate and a stable hostname without exposing anything
+to the internet.
+
+Tokens are cached in `localStorage` rather than memory. The memory-only alternative relies on a
+hidden iframe with `prompt=none`, which depends on a third-party cookie that Chrome and Safari
+block, so silent auth would fail on every reload. Refresh-token rotation is the mitigation.
+
+### Consequences
+
+**Positive:** Per-user isolation; no credential handling of our own; SSO and MFA available for
+free; the extension no longer carries a secret that can read and delete everything; keys are
+revocable per browser without touching the others; rate limiting partitions per credential, so a
+runaway extension cannot lock you out of the web app.
+
+**Negative:** TLS becomes mandatory for self-hosters; a third-party dependency and a sign-up step;
+a lost key can only be replaced, never recovered; the first account to sign in silently inherits
+the pre-migration collection, so you should sign in yourself before sharing the URL.

@@ -54,10 +54,10 @@ describe('postBatch', () => {
     expect(result.summary).toEqual(summary)
   })
 
-  it('throws a 401 ApiError pointing at the API key', async () => {
+  it('throws a 401 ApiError telling the user to mint a new key', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })))
 
-    await expect(postBatch('http://x/api', 'bad', items)).rejects.toThrow(/api key/i)
+    await expect(postBatch('http://x/api', 'bad', items)).rejects.toThrow(/key rejected/i)
   })
 
   // The API's sync policy allows 5 requests/minute and returns Retry-After.
@@ -101,7 +101,7 @@ describe('testConnection', () => {
   it('rejects when the key is wrong', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 401 })))
 
-    await expect(testConnection('http://x/api', 'bad')).rejects.toThrow(/api key/i)
+    await expect(testConnection('http://x/api', 'bad')).rejects.toThrow(/key rejected/i)
   })
 
   it('reports an unreachable server', async () => {

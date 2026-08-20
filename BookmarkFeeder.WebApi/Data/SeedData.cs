@@ -1,3 +1,4 @@
+using BookmarkFeeder.WebApi.Data.Configurations;
 using BookmarkFeeder.WebApi.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,16 +8,37 @@ public static class SeedData
 {
     public static async Task SeedDevelopmentDataAsync(BookmarkDbContext context)
     {
-        // Check if data already exists
-        if (await context.Bookmarks.AnyAsync())
+        // IgnoreQueryFilters(["Owner"]) is load-bearing. This runs in the startup scope, which has
+        // no authenticated user, so the owner filter would make this check ALWAYS false: the
+        // seeder would re-run on every start and the second run would violate
+        // IX_Bookmarks_OwnerId_Url, taking the app down on the second `dotnet run`.
+        if (await context.Bookmarks
+                .IgnoreQueryFilters(["Owner"])
+                .AnyAsync(b => b.OwnerId == UserConfiguration.PlaceholderUserId))
         {
             return; // Database has been seeded
+        }
+
+        // Dev data belongs to the same placeholder the migration backfills to, so signing in for
+        // the first time claims it and the dashboard is not empty.
+        var ownerId = UserConfiguration.PlaceholderUserId;
+        if (!await context.Users.AnyAsync(u => u.Id == ownerId))
+        {
+            context.Users.Add(new User
+            {
+                Id = ownerId,
+                Auth0Sub = null,           // unclaimed: the first login takes it
+                DisplayName = "Pre-multi-user collection",
+                CreatedAt = DateTime.UtcNow,
+            });
+            await context.SaveChangesAsync();
         }
 
         // Create categories
         var techCategory = new Category
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = "Technology",
             Description = "Technology and programming resources",
             DateCreated = DateTime.UtcNow
@@ -25,6 +47,7 @@ public static class SeedData
         var newsCategory = new Category
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = "News",
             Description = "News and current events",
             DateCreated = DateTime.UtcNow
@@ -33,6 +56,7 @@ public static class SeedData
         var programmingCategory = new Category
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = "Programming",
             ParentCategoryId = techCategory.Id,
             Description = "Programming languages and frameworks",
@@ -42,6 +66,7 @@ public static class SeedData
         var webdevCategory = new Category
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = "Web Development",
             ParentCategoryId = programmingCategory.Id,
             Description = "Web development resources and tutorials",
@@ -54,6 +79,7 @@ public static class SeedData
         var csharpTag = new Tag
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = "C#",
             NormalizedName = "c#",
             Color = "#9B4F96",
@@ -63,6 +89,7 @@ public static class SeedData
         var dotnetTag = new Tag
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = ".NET",
             NormalizedName = ".net",
             Color = "#512BD4",
@@ -72,6 +99,7 @@ public static class SeedData
         var aspnetTag = new Tag
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = "ASP.NET Core",
             NormalizedName = "asp.net core",
             DateCreated = DateTime.UtcNow
@@ -80,6 +108,7 @@ public static class SeedData
         var webdevTag = new Tag
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = "WebDev",
             NormalizedName = "webdev",
             DateCreated = DateTime.UtcNow
@@ -88,6 +117,7 @@ public static class SeedData
         var documentationTag = new Tag
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = "Documentation",
             NormalizedName = "documentation",
             DateCreated = DateTime.UtcNow
@@ -96,6 +126,7 @@ public static class SeedData
         var tutorialTag = new Tag
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = "Tutorial",
             NormalizedName = "tutorial",
             DateCreated = DateTime.UtcNow
@@ -104,6 +135,7 @@ public static class SeedData
         var microsoftTag = new Tag
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Name = "Microsoft",
             NormalizedName = "microsoft",
             DateCreated = DateTime.UtcNow
@@ -117,6 +149,7 @@ public static class SeedData
         var bookmark1 = new Bookmark
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Url = "https://docs.microsoft.com/dotnet",
             Title = ".NET Documentation",
             Description = "Official Microsoft .NET documentation and guides",
@@ -131,6 +164,7 @@ public static class SeedData
         var bookmark2 = new Bookmark
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Url = "https://learn.microsoft.com/aspnet/core",
             Title = "ASP.NET Core Documentation",
             Description = "Learn how to build web apps and APIs with ASP.NET Core",
@@ -144,6 +178,7 @@ public static class SeedData
         var bookmark3 = new Bookmark
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Url = "https://learn.microsoft.com/csharp",
             Title = "C# Programming Guide",
             Description = "Learn C# programming language concepts and syntax",
@@ -157,6 +192,7 @@ public static class SeedData
         var bookmark4 = new Bookmark
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Url = "https://github.com/dotnet/aspire",
             Title = ".NET Aspire",
             Description = "An opinionated, cloud ready stack for building observable, production ready, distributed applications",
@@ -170,6 +206,7 @@ public static class SeedData
         var bookmark5 = new Bookmark
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Url = "https://learn.microsoft.com/ef/core",
             Title = "Entity Framework Core",
             Description = "Modern object-database mapper for .NET",
@@ -181,6 +218,7 @@ public static class SeedData
         var bookmark6 = new Bookmark
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Url = "https://www.nuget.org",
             Title = "NuGet Gallery",
             Description = "The package manager for .NET",
@@ -192,6 +230,7 @@ public static class SeedData
         var bookmark7 = new Bookmark
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Url = "https://dotnetfoundation.org",
             Title = ".NET Foundation",
             Description = "Independent organization to foster open development around the .NET ecosystem",
@@ -203,6 +242,7 @@ public static class SeedData
         var bookmark8 = new Bookmark
         {
             Id = Guid.NewGuid(),
+            OwnerId = ownerId,
             Url = "https://devblogs.microsoft.com/dotnet",
             Title = ".NET Blog",
             Description = "The official .NET blog with updates, announcements, and deep dives",

@@ -23,6 +23,54 @@ namespace BookmarkFeeder.WebApi.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("BookmarkFeeder.WebApi.Models.ApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerId");
+
+                    b.HasIndex("Prefix");
+
+                    b.ToTable("ApiKeys");
+                });
+
             modelBuilder.Entity("BookmarkFeeder.WebApi.Models.Bookmark", b =>
                 {
                     b.Property<Guid>("Id")
@@ -57,11 +105,14 @@ namespace BookmarkFeeder.WebApi.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
                     b.Property<NpgsqlTsVector>("SearchVector")
                         .IsRequired()
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("tsvector")
-                        .HasComputedColumnSql("setweight(to_tsvector('english', coalesce(\"Title\", '')), 'A') ||\r\nsetweight(to_tsvector('english', coalesce(\"Description\", '')), 'B') ||\r\nsetweight(to_tsvector('english', regexp_replace(coalesce(\"Url\", ''), '[^a-zA-Z0-9]+', ' ', 'g')), 'C')", true);
+                        .HasComputedColumnSql("setweight(to_tsvector('english', coalesce(\"Title\", '')), 'A') ||\nsetweight(to_tsvector('english', coalesce(\"Description\", '')), 'B') ||\nsetweight(to_tsvector('english', regexp_replace(coalesce(\"Url\", ''), '[^a-zA-Z0-9]+', ' ', 'g')), 'C')", true);
 
                     b.Property<string>("SourceFolder")
                         .HasMaxLength(1024)
@@ -81,17 +132,17 @@ namespace BookmarkFeeder.WebApi.Migrations
 
                     b.HasIndex("CategoryId");
 
-                    b.HasIndex("DateAdded");
-
-                    b.HasIndex("IsRead");
-
                     b.HasIndex("SearchVector");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("SearchVector"), "gin");
 
-                    b.HasIndex("SourceFolder");
+                    b.HasIndex("OwnerId", "DateAdded");
 
-                    b.HasIndex("Url")
+                    b.HasIndex("OwnerId", "IsRead");
+
+                    b.HasIndex("OwnerId", "SourceFolder");
+
+                    b.HasIndex("OwnerId", "Url")
                         .IsUnique();
 
                     b.ToTable("Bookmarks");
@@ -135,10 +186,15 @@ namespace BookmarkFeeder.WebApi.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("ParentCategoryId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OwnerId");
 
                     b.HasIndex("ParentCategoryId");
 
@@ -159,6 +215,9 @@ namespace BookmarkFeeder.WebApi.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Query")
                         .IsRequired()
                         .HasMaxLength(2048)
@@ -166,7 +225,7 @@ namespace BookmarkFeeder.WebApi.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DateCreated");
+                    b.HasIndex("OwnerId", "DateCreated");
 
                     b.ToTable("SavedSearches");
                 });
@@ -194,12 +253,58 @@ namespace BookmarkFeeder.WebApi.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uuid");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("NormalizedName")
+                    b.HasIndex("OwnerId", "NormalizedName")
                         .IsUnique();
 
                     b.ToTable("Tags");
+                });
+
+            modelBuilder.Entity("BookmarkFeeder.WebApi.Models.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Auth0Sub")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<DateTime?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Auth0Sub")
+                        .IsUnique();
+
+                    b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("BookmarkFeeder.WebApi.Models.ApiKey", b =>
+                {
+                    b.HasOne("BookmarkFeeder.WebApi.Models.User", "Owner")
+                        .WithMany("ApiKeys")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
                 });
 
             modelBuilder.Entity("BookmarkFeeder.WebApi.Models.Bookmark", b =>
@@ -209,7 +314,15 @@ namespace BookmarkFeeder.WebApi.Migrations
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("BookmarkFeeder.WebApi.Models.User", "Owner")
+                        .WithMany("Bookmarks")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Category");
+
+                    b.Navigation("Owner");
                 });
 
             modelBuilder.Entity("BookmarkFeeder.WebApi.Models.BookmarkTag", b =>
@@ -233,12 +346,42 @@ namespace BookmarkFeeder.WebApi.Migrations
 
             modelBuilder.Entity("BookmarkFeeder.WebApi.Models.Category", b =>
                 {
+                    b.HasOne("BookmarkFeeder.WebApi.Models.User", "Owner")
+                        .WithMany("Categories")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("BookmarkFeeder.WebApi.Models.Category", "ParentCategory")
                         .WithMany("SubCategories")
                         .HasForeignKey("ParentCategoryId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.Navigation("Owner");
+
                     b.Navigation("ParentCategory");
+                });
+
+            modelBuilder.Entity("BookmarkFeeder.WebApi.Models.SavedSearch", b =>
+                {
+                    b.HasOne("BookmarkFeeder.WebApi.Models.User", "Owner")
+                        .WithMany("SavedSearches")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
+                });
+
+            modelBuilder.Entity("BookmarkFeeder.WebApi.Models.Tag", b =>
+                {
+                    b.HasOne("BookmarkFeeder.WebApi.Models.User", "Owner")
+                        .WithMany("Tags")
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Owner");
                 });
 
             modelBuilder.Entity("BookmarkFeeder.WebApi.Models.Bookmark", b =>
@@ -256,6 +399,19 @@ namespace BookmarkFeeder.WebApi.Migrations
             modelBuilder.Entity("BookmarkFeeder.WebApi.Models.Tag", b =>
                 {
                     b.Navigation("BookmarkTags");
+                });
+
+            modelBuilder.Entity("BookmarkFeeder.WebApi.Models.User", b =>
+                {
+                    b.Navigation("ApiKeys");
+
+                    b.Navigation("Bookmarks");
+
+                    b.Navigation("Categories");
+
+                    b.Navigation("SavedSearches");
+
+                    b.Navigation("Tags");
                 });
 #pragma warning restore 612, 618
         }
