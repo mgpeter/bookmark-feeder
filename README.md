@@ -85,7 +85,8 @@ cp .env.nas.template .env              # next to docker-compose.yaml
 # set the AUTH0_* values, POSTGRES_PASSWORD, GATEWAY_PORT and the three image tags
 docker compose up -d
 
-# TLS, which sign-in requires - see below
+# TLS, which sign-in requires - see below. The gateway publishes on 127.0.0.1 only, so this is
+# the only way in. If 443 is taken on that host, use --https=8081 and browse the :8081 URL.
 tailscale serve --bg --https=443 http://127.0.0.1:8081
 tailscale serve status                 # prints your https://<machine>.<tailnet>.ts.net URL
 ```
@@ -95,8 +96,10 @@ bookmarks that were already there.
 
 What you should know:
 
-- **Only the gateway is exposed.** `webapi`, `web` and `postgres` stay on an internal network.
-  `/api` routes to the API, everything else to the static web app - one origin, no CORS.
+- **Only the gateway is exposed, and only on loopback.** `webapi`, `web` and `postgres` stay on an
+  internal network, and the gateway publishes on `127.0.0.1` - the TLS terminator in front is the
+  sole way in. `/api` routes to the API, everything else to the static web app - one origin, no
+  CORS. `GATEWAY_BIND=0.0.0.0` if your terminator lives on another machine.
 - **Migrations apply on start.** No manual schema step, on first run or after an upgrade.
 - **Your data is a directory**, not a hidden Docker volume: `POSTGRES_DATA_PATH` (default
   `./data/postgres` beside the compose file). **It is the only thing worth backing up** - everything
@@ -104,14 +107,17 @@ What you should know:
 - **Deploy by version tag, never `:latest`**, so "which build is running?" has an answer.
 - **TLS is required**, and this is the one genuinely surprising constraint. Signing in uses PKCE,
   which needs the browser's Web Crypto API, and browsers expose that only on *secure origins* - so
-  `http://<nas>:8081` cannot log in, failing with an opaque error about `digest`. `localhost` is a
-  secure origin, which is why development is unaffected. `tailscale serve` is the least work: a
-  real Let's Encrypt certificate and a stable hostname, with nothing exposed to the internet.
+  a plain `http://` address cannot log in, failing with an opaque error about `digest`.
+  `localhost` is a secure origin, which is why development is unaffected. `tailscale serve` is
+  the least work: a real Let's Encrypt certificate and a stable hostname, with nothing exposed
+  to the internet.
   Any other reverse proxy terminating TLS works equally well.
 - **Use `tailscale serve`, not `tailscale funnel`.** Funnel publishes to the open internet, and
   signup is open by default - anyone who could reach it could create an account on your NAS.
 - **Add your `ts.net` URL to Auth0**, under the application's Allowed Callback URLs, Allowed Logout
-  URLs and Allowed Web Origins. A missing Web Origin fails only on token *refresh*, hours later.
+  URLs and Allowed Web Origins. Include the port if you serve TLS on one - `https://host:8081` is a
+  different origin from `https://host`. A missing Web Origin fails only on token *refresh*, hours
+  later.
 - **The extension does not use Auth0.** You sign in to the web app and mint it a key, which is
   limited to syncing.
 

@@ -9,7 +9,8 @@ BookmarkFeeder runs as five containers behind one reverse-proxy gateway:
         compose-dashboard (telemetry, optional)
 ```
 
-Only **gateway** and the dashboard publish host ports. `webapi`, `web` and `postgres` are internal.
+Only **gateway** and the dashboard publish host ports, and the gateway publishes on **127.0.0.1**
+only - a TLS terminator in front is the sole way in. `webapi`, `web` and `postgres` are internal.
 
 **TLS is required**, and it is not optional the way it used to be: signing in uses PKCE, which
 needs the browser's Web Crypto API, and browsers expose that only on secure origins. Step 8 sets it
@@ -114,7 +115,7 @@ a restart can silently change the app.
 ```bash
 cp docker/.env.local.template docker/.env
 docker compose -f docker/docker-compose.yaml up -d
-# http://localhost:8081
+# http://localhost:8081 - localhost is a secure origin, so sign-in works here without TLS
 ```
 
 Same images, same compose, same wiring as the NAS. Two bugs that made every container fail
@@ -163,7 +164,8 @@ Set:
 | `AUTH0_AUDIENCE` | The API identifier from the Auth0 step, e.g. `https://api.bookmarkfeeder`. Not a secret. |
 | `AUTH0_CLIENT_ID` | The SPA application's client id. Public by design - it ships in the browser bundle. |
 | `POSTGRES_PASSWORD` | `openssl rand -base64 24`. **Pick once** - the database keeps the password from first boot; changing it later locks the API out of its own data. |
-| `GATEWAY_PORT` | The port you'll browse to. Defaults to 8081 - 8080 is a busy port (Glance uses it here) and DSM itself takes 5000/5001. |
+| `GATEWAY_PORT` | The port the TLS terminator forwards to, on 127.0.0.1. Defaults to 8081 - 8080 is a busy port (Glance uses it here) and DSM itself takes 5000/5001. |
+| `GATEWAY_BIND` | Optional. The host address the gateway publishes on, `127.0.0.1` by default. Set `0.0.0.0` only if the TLS terminator runs on another machine. |
 | `*_IMAGE` | The three version tags from step 1. |
 
 You only ever revisit the `*_IMAGE` lines. `aspire publish` never overwrites this file - it only
@@ -204,11 +206,24 @@ tailscale serve --bg --https=443 http://127.0.0.1:8081
 tailscale serve status        # prints https://<machine>.<tailnet>.ts.net/
 ```
 
+If 443 on that host already belongs to something else, terminate on the gateway's own port number
+instead - the port is free on the tailnet address because the container binds loopback only:
+
+```bash
+tailscale serve --bg --https=8081 http://127.0.0.1:8081
+tailscale serve status        # prints https://<machine>.<tailnet>.ts.net:8081/
+```
+
+A port makes it a **different origin**, so `https://host:8081` must be registered in Auth0 in its
+own right - `https://host` will not cover it.
+
 Why this is not optional. `auth0-spa-js` derives its PKCE code challenge with `crypto.subtle`, and
 browsers expose the Web Crypto API only on **secure origins**. `https://<machine>.<tailnet>.ts.net`
-qualifies - Tailscale issues a real Let's Encrypt certificate. `http://<nas>:8081` and
-`http://192.168.1.x:8081` do not, and the app fails at startup with an opaque error about reading
-`digest` of undefined.
+qualifies - Tailscale issues a real Let's Encrypt certificate. A plain `http://` address does not,
+whatever the port, and the app fails at startup with an opaque error about reading `digest` of
+undefined. That is why the gateway publishes on **127.0.0.1 only**: an http:// copy of the app on
+the LAN would be an origin nobody can sign in from, and it would fight the TLS listener for the
+port. `GATEWAY_BIND=0.0.0.0` restores the old behaviour when the terminator is on another host.
 
 `localhost` *is* a secure origin by specification, which is why local development needs none of
 this.
@@ -309,17 +324,26 @@ both to work.
 from the container. Note the browser extension is unaffected by this - key validation is entirely
 local.
 
-**A certificate error on `http://<host>:8081`.** Nothing here redirects to HTTPS. It is your
-browser: HSTS is host-wide and **ignores ports**, so if anything on that hostname ever sent an HSTS
-header, every port on it gets force-upgraded. Clear it at `chrome://net-internals/#hsts` →
-*Delete domain security policies*. An incognito window confirms the diagnosis quickly.
+**`ERR_SSL_PROTOCOL_ERROR` on the https URL.** Something is answering that port in plain HTTP, so
+the TLS handshake gets an HTTP response. Either `tailscale serve` has no mapping for the port you
+browsed to (`tailscale serve status`), or the container is publishing on `0.0.0.0` and winning the
+race for it - check `GATEWAY_BIND` is unset and `docker compose ps` shows `127.0.0.1:8081->8081`,
+not `0.0.0.0:8081->8081`.
+
+**A stale HSTS upgrade.** HSTS is host-wide and **ignores ports**, so if anything on that hostname
+ever sent the header, every port on it gets force-upgraded to https. Usually what you want here,
+but it confuses diagnosis. Clear it at `chrome://net-internals/#hsts` → *Delete domain security
+policies*; an incognito window confirms it quickly.
 
 **`port is already allocated`.** Project names scope networks and containers, but published ports
 are host-global. Change `GATEWAY_PORT`; the gateway's internal port follows, because both sides read
 the same variable.
 
-**Everything 502s.** The gateway cannot reach `web` or `webapi`. `sudo docker compose ps` - check
-they are up, and that `web` is listening on 8000 (nginx's default 80 is wrong here).
+**Everything 502s.** Look at *which* server answered. `Server: Kestrel` means the gateway itself
+replied and cannot reach `web` or `webapi` - `sudo docker compose ps`, and check `web` is listening
+on 8000 (nginx's default 80 is wrong here). A 502 from Tailscale instead means `tailscale serve` is
+pointed at a port nothing is listening on, which is easy to do when the host serves more than one
+app: `tailscale serve status` shows the mapping it actually has.
 
 **`3D000: database "bookmarkfeeder" does not exist`.** Migrations did not run. Fixed in 0.1.1;
 `0.1.0` is broken and must not be deployed.

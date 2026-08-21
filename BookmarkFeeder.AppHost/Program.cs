@@ -1,4 +1,4 @@
-using Aspire.Hosting.Docker.Resources.ComposeNodes;
+﻿using Aspire.Hosting.Docker.Resources.ComposeNodes;
 using Aspire.Hosting.Docker.Resources.ServiceNodes;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -155,8 +155,16 @@ builder.AddProject<Projects.BookmarkFeeder_Gateway>("gateway")
         // A bare "${GATEWAY_PORT}" publishes to a RANDOM host port, which is useless for a NAS
         // people bookmark. Both sides come from the same variable so one .env knob controls the
         // published port and the port the gateway listens on (HTTP_PORTS), and they cannot drift.
+        //
+        // Bound to LOOPBACK by default, which is the part worth explaining. Signing in needs a
+        // secure origin, so the only usable address is whatever a TLS terminator publishes -
+        // `tailscale serve` here. Publishing on 0.0.0.0 as well would put a plain-HTTP copy of the
+        // app on every interface the host has: a second origin that cannot complete a login, and
+        // one that races the TLS listener when the terminator serves the same port number. Set
+        // GATEWAY_BIND=0.0.0.0 when the TLS terminator runs on another machine and has to reach
+        // this one over the network.
         service.Ports.Clear();
-        service.Ports.Add("${GATEWAY_PORT}:${GATEWAY_PORT}");
+        service.Ports.Add("${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT}:${GATEWAY_PORT}");
     });
 
 builder.Build().Run();

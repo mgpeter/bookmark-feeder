@@ -94,7 +94,7 @@ services:
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "gateway"
     ports:
-      - "${GATEWAY_PORT}:${GATEWAY_PORT}"
+      - "${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT}:${GATEWAY_PORT}"
     depends_on:
       webapi:
         condition: "service_started"
