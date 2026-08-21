@@ -13,6 +13,13 @@ namespace BookmarkFeeder.WebApi.Tests.Infrastructure;
 [Trait("Category", "Integration")]
 public class SearchVectorTests(PostgresApiFactory factory) : IClassFixture<PostgresApiFactory>
 {
+    // The leading letter is load-bearing. A bare hex token like "5442e759" parses as scientific
+    // notation, so Postgres emits it as its own float token and splits it from the word appended to
+    // it - the assertions below then look for a lexeme that was never produced. Starting with a
+    // letter makes the whole thing a single numword. Matches the Token() helper in the sibling
+    // search suites.
+    private static string Token() => "v" + Guid.NewGuid().ToString("N")[..10];
+
     private async Task<BookmarkDto> CreateBookmark(HttpClient client, CreateBookmarkRequest request)
     {
         var response = await client.PostAsJsonAsync("/api/bookmarks", request);
@@ -50,7 +57,7 @@ public class SearchVectorTests(PostgresApiFactory factory) : IClassFixture<Postg
     public async Task SearchVector_WeightsTitleA_DescriptionB_UrlC()
     {
         var client = factory.CreateAuthenticatedClient();
-        var token = Guid.NewGuid().ToString("N")[..8];
+        var token = Token();
         var created = await CreateBookmark(client, new CreateBookmarkRequest(
             $"https://example.com/{token}urlword",
             $"{token}titleword",
@@ -87,7 +94,7 @@ public class SearchVectorTests(PostgresApiFactory factory) : IClassFixture<Postg
     public async Task SearchVector_IndexesUrlWordsIndividually_NotAsHostTokens()
     {
         var client = factory.CreateAuthenticatedClient();
-        var token = Guid.NewGuid().ToString("N")[..8];
+        var token = Token();
         // Postgres' parser would index this as the host token "{token}wolverine.netlify.app",
         // leaving a search for the bare product name unmatched — the ILIKE search we're
         // replacing did match it, so the vector must keep the segments separately searchable.
