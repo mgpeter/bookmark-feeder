@@ -1,0 +1,5 @@
+# Shell scripts must keep LF, even on a Windows checkout. With core.autocrlf=true git writes them
+# out with CRLF, and `docker build` copies the working-tree file verbatim - the container then
+# cannot exec `#!/bin/sh\r` and fails with a bare "not found". That silently broke the web image's
+# runtime-config entrypoint, the script that writes config.js at container start.
+*.sh text eol=lf
