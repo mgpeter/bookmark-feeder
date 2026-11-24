@@ -120,6 +120,25 @@ describe('testConnection', () => {
     await expect(postBatch('https://nas', 'k', items)).rejects.toThrow(/must end in \/api/i)
   })
 
+  it('shows the first validation error from a ValidationProblem body', async () => {
+    const problem = new Response(
+      JSON.stringify({
+        title: 'One or more validation errors occurred.',
+        errors: { Bookmarks: ['A batch may hold at most 10000 bookmarks; split larger syncs.'] },
+      }),
+      { status: 400, headers: { 'Content-Type': 'application/problem+json' } },
+    )
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(problem))
+
+    await expect(postBatch('https://nas/api', 'k', items)).rejects.toThrow(/at most 10000/)
+  })
+
+  it('leaves Safari advice out of the unreachable-server message outside the Safari build', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+
+    await expect(testConnection('http://x/api', 'k')).rejects.toThrow(/^(?!.*Safari)/)
+  })
+
   it('reports an unreachable server', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
