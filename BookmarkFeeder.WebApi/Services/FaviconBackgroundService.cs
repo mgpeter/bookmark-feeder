@@ -40,10 +40,19 @@ public class FaviconBackgroundService(
     }
 
     /// <summary>
-    /// Queues every bookmark never attempted before. `FaviconFetchedAt == null` is the whole
-    /// state machine: a success or a failure both stamp it, so this picks up new bookmarks and
-    /// anything dropped by a full queue, but never re-fetches a site already known to have no
-    /// discoverable icon.
+    /// How long a "no icon found" result stands before it is tried again. A failed attempt stamps
+    /// the bookmark like a success, and the attempt cannot tell a site with no icon from one that
+    /// was briefly down, timed out, or was rate-limiting - so without a retry a passing outage
+    /// cost that bookmark its favicon forever. Monthly is rare enough to stay polite to sites
+    /// that really have none.
+    /// </summary>
+    public static readonly TimeSpan RetryNoIconAfter = TimeSpan.FromDays(30);
+
+    /// <summary>
+    /// Queues every bookmark never attempted, plus those whose attempt found nothing more than
+    /// <see cref="RetryNoIconAfter"/> ago. `FaviconFetchedAt` is the state machine: a success or
+    /// a failure both stamp it, so this picks up new bookmarks and anything dropped by a full
+    /// queue, and re-checks a site with no icon only once the retry period has passed.
     /// </summary>
     private async Task BackfillAsync(CancellationToken ct)
     {
@@ -59,9 +68,11 @@ public class FaviconBackgroundService(
             // request, so there is no current user and the owner filter would match NOTHING -
             // favicon enrichment would silently stop for everyone. Enrichment is deliberately
             // cross-owner: it reads a URL and writes an icon, and touches nothing user-visible.
+            var retryBefore = DateTime.UtcNow - RetryNoIconAfter;
             var pending = await context.Bookmarks
                 .IgnoreQueryFilters(["Owner"])
-                .Where(b => b.FaviconFetchedAt == null)
+                .Where(b => b.FaviconFetchedAt == null ||
+                            (b.FaviconUrl == null && b.FaviconFetchedAt < retryBefore))
                 .Select(b => b.Id)
                 .ToListAsync(ct);
 

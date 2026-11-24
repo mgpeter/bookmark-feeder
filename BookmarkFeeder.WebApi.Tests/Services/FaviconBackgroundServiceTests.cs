@@ -226,6 +226,35 @@ public class FaviconBackgroundServiceTests
     }
 
     [Fact]
+    public async Task Backfill_RetriesANoIconResult_OnceTheRetryPeriodHasPassed()
+    {
+        // A timeout or a brief outage is recorded exactly like "this site has no icon"; it must
+        // not cost the bookmark its favicon forever.
+        await using var harness = Build();
+        harness.Resolver.Behaviour = _ => "https://site.example/favicon.ico";
+        var stale = await AddBookmark(harness, "https://was-down.example/page");
+        var found = await AddBookmark(harness, "https://has-icon.example/page", faviconUrl: "https://has-icon.example/i.png");
+
+        await using (var db = await harness.Db.CreateDbContextAsync())
+        {
+            var longAgo = DateTime.UtcNow - FaviconBackgroundService.RetryNoIconAfter - TimeSpan.FromDays(1);
+            foreach (var bookmark in await db.Bookmarks.ToListAsync())
+            {
+                bookmark.FaviconFetchedAt = longAgo;
+            }
+            await db.SaveChangesAsync();
+        }
+
+        await harness.Worker.StartAsync(CancellationToken.None);
+
+        (await Eventually(async () => (await Reload(harness, stale))?.FaviconUrl is not null))
+            .Should().BeTrue("a month-old miss is tried again");
+        harness.Resolver.Seen.Should().NotContain("https://has-icon.example/page",
+            "a bookmark that already has an icon is never re-fetched");
+        (await Reload(harness, found))!.FaviconUrl.Should().Be("https://has-icon.example/i.png");
+    }
+
+    [Fact]
     public async Task AnUnknownId_IsIgnored()
     {
         await using var harness = Build();
