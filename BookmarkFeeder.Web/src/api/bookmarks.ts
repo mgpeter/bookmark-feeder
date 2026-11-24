@@ -6,6 +6,7 @@ import {
 } from '@tanstack/react-query'
 import { api } from '@/lib/api-client'
 import { narrowingFilters } from '@/lib/bookmark-filters'
+import { bookmarksKey, categoriesKey, tagsKey } from './query-keys'
 import type {
   Bookmark,
   BookmarkListResult,
@@ -14,7 +15,19 @@ import type {
   UpdateBookmarkRequest,
 } from '@/types/models'
 
-export const bookmarksKey = 'bookmarks'
+export { bookmarksKey }
+
+/**
+ * Creating, editing or deleting a bookmark can mint tag names and changes the per-tag and
+ * per-category counts, so the Tags and Categories screens (and the filter pickers) go stale too.
+ */
+function invalidateBookmarksAndTaxonomy(qc: ReturnType<typeof useQueryClient>) {
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: [bookmarksKey] }),
+    qc.invalidateQueries({ queryKey: [tagsKey] }),
+    qc.invalidateQueries({ queryKey: [categoriesKey] }),
+  ])
+}
 
 export function useBookmarks(query: BookmarkQuery) {
   return useQuery({
@@ -37,7 +50,7 @@ export function useCreateBookmark() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: CreateBookmarkRequest) => api.post<Bookmark>('/bookmarks', body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [bookmarksKey] }),
+    onSuccess: () => invalidateBookmarksAndTaxonomy(qc),
   })
 }
 
@@ -46,7 +59,7 @@ export function useUpdateBookmark() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdateBookmarkRequest }) =>
       api.put<Bookmark>(`/bookmarks/${id}`, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [bookmarksKey] }),
+    onSuccess: () => invalidateBookmarksAndTaxonomy(qc),
   })
 }
 
@@ -54,7 +67,7 @@ export function useDeleteBookmark() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => api.del<void>(`/bookmarks/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [bookmarksKey] }),
+    onSuccess: () => invalidateBookmarksAndTaxonomy(qc),
   })
 }
 

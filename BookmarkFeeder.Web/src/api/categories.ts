@@ -5,8 +5,20 @@ import type {
   CreateCategoryRequest,
   UpdateCategoryRequest,
 } from '@/types/models'
+import { bookmarksKey, categoriesKey } from './query-keys'
 
-export const categoriesKey = 'categories'
+export { categoriesKey }
+
+/**
+ * Renaming a category changes the badge on its bookmarks; deleting one detaches or reassigns them.
+ * Either way the bookmark list is stale too.
+ */
+function invalidateCategoriesAndBookmarks(qc: ReturnType<typeof useQueryClient>) {
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: [categoriesKey] }),
+    qc.invalidateQueries({ queryKey: [bookmarksKey] }),
+  ])
+}
 
 export function useCategories() {
   return useQuery({
@@ -28,7 +40,7 @@ export function useUpdateCategory() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: UpdateCategoryRequest }) =>
       api.put<Category>(`/categories/${id}`, body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [categoriesKey] }),
+    onSuccess: () => invalidateCategoriesAndBookmarks(qc),
   })
 }
 
@@ -37,7 +49,7 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: ({ id, reassignTo }: { id: string; reassignTo?: string }) =>
       api.del<void>(`/categories/${id}`, reassignTo ? { reassignTo } : undefined),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [categoriesKey] }),
+    onSuccess: () => invalidateCategoriesAndBookmarks(qc),
   })
 }
 
