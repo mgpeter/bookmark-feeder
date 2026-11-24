@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
+using BookmarkFeeder.WebApi.Dtos;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookmarkFeeder.WebApi.Tests.Infrastructure;
 
@@ -118,5 +120,30 @@ public class UserIsolationTests(BookmarkApiFactory factory) : IClassFixture<Book
         // Rejected as an invalid category rather than a permission error - Bob is told nothing
         // about whether that id exists.
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task ABearerTokenCarryingTheKeyOwnerClaim_DoesNotActAsThatOwner()
+    {
+        // Only the API-key handler may assert bmf:owner. A JWT that carried it (an Auth0 Action
+        // could add one) must resolve to its own subject, not to the named account.
+        var victimClient = factory.CreateAuthenticatedClient(BookmarkApiFactory.OtherSub);
+        var secret = $"https://victim-{Guid.NewGuid():N}.example.com";
+        (await victimClient.PostAsJsonAsync("/api/bookmarks",
+            new CreateBookmarkRequest(secret, "Victim's", null, null, null, null, null)))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
+
+        await using var db = factory.CreateContext();
+        var victimId = (await db.Users.SingleAsync(u => u.Auth0Sub == BookmarkApiFactory.OtherSub)).Id;
+
+        var attacker = factory.CreateClient();
+        attacker.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer",
+            TestTokens.Create("auth0|attacker", extraClaims: new Dictionary<string, object>
+            {
+                [BookmarkFeeder.WebApi.Auth.ApiKeyAuthenticationHandler.OwnerIdClaim] = victimId.ToString(),
+            }));
+
+        (await attacker.GetStringAsync("/api/bookmarks?pageSize=100")).Should().NotContain(secret);
     }
 }

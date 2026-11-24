@@ -28,7 +28,8 @@ public static class TestTokens
         DateTime? expires = null,
         string? issuer = null,
         string? audience = null,
-        SecurityKey? signingKey = null)
+        SecurityKey? signingKey = null,
+        IDictionary<string, object>? extraClaims = null)
     {
         var descriptor = new SecurityTokenDescriptor
         {
@@ -44,6 +45,11 @@ public static class TestTokens
                 ["name"] = name ?? sub,
             },
         };
+
+        foreach (var (type, value) in extraClaims ?? new Dictionary<string, object>())
+        {
+            descriptor.Claims[type] = value;
+        }
 
         return new JsonWebTokenHandler().CreateToken(descriptor);
     }

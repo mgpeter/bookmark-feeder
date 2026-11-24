@@ -28,6 +28,16 @@ public sealed class ApiKeyAuthenticationHandler(
     /// <summary>Marks the principal as key-authenticated, which ApiKeyScopeFilter keys off.</summary>
     public const string KeyIdClaim = "bmf:key";
 
+    /// <summary>
+    /// A claim issued by THIS handler, or null. Reading <see cref="OwnerIdClaim"/> from the principal
+    /// at large would also accept it from a bearer token, and a token that carried one (only an Auth0
+    /// Action could add it, but still) would act as that user with full rather than sync scope.
+    /// </summary>
+    public static string? FindClaim(ClaimsPrincipal principal, string type) =>
+        principal.Identities
+            .FirstOrDefault(i => i.IsAuthenticated && i.AuthenticationType == SchemeName)
+            ?.FindFirst(type)?.Value;
+
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         if (!Request.Headers.TryGetValue(HeaderName, out var header))

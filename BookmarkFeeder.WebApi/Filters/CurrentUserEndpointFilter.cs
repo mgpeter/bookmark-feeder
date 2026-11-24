@@ -30,7 +30,7 @@ public sealed class CurrentUserEndpointFilter(
 
         // An API key already resolved its owner during authentication, so there is nothing to look
         // up and nothing to provision - a key can only exist for a user who has already signed in.
-        var ownerClaim = principal.FindFirstValue(ApiKeyAuthenticationHandler.OwnerIdClaim);
+        var ownerClaim = ApiKeyAuthenticationHandler.FindClaim(principal, ApiKeyAuthenticationHandler.OwnerIdClaim);
         if (ownerClaim is not null && Guid.TryParse(ownerClaim, out var ownerId))
         {
             currentUser.Set(ownerId);
