@@ -7,6 +7,7 @@
 #
 # Requires `docker login -u mgpeter` first — this script will not handle credentials.
 # --no-push builds without releasing, and therefore does not bump VERSION.
+# --current releases VERSION as it stands, for when the bump was already committed by hand.
 #
 # Deploy the NAS by the version tag, never :latest, so "which build is running?" always has an
 # answer. The .env lines to paste are printed at the end.
@@ -25,7 +26,7 @@ bump_set=0
 
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [--patch | --minor | --major] [--no-push] [--dry-run]
+Usage: $(basename "$0") [--patch | --minor | --major | --current] [--no-push] [--dry-run]
 
 Bump VERSION, build the images, tag :latest and :<version>, push to Docker Hub.
 
@@ -33,6 +34,7 @@ Options:
   --patch    Bump patch (default)
   --minor    Bump minor (resets patch)
   --major    Bump major (resets minor and patch)
+  --current  Release VERSION unchanged (it was already bumped and committed)
   --no-push  Build and tag locally; skip 'docker push'
   --dry-run  Print the version bump and exit without writing/building/pushing
   -h, --help Show this message
@@ -44,6 +46,7 @@ while [[ $# -gt 0 ]]; do
     --patch) bump=patch; bump_set=$((bump_set + 1)) ;;
     --minor) bump=minor; bump_set=$((bump_set + 1)) ;;
     --major) bump=major; bump_set=$((bump_set + 1)) ;;
+    --current) bump=current; bump_set=$((bump_set + 1)) ;;
     --no-push) no_push=1 ;;
     --dry-run) dry_run=1 ;;
     -h|--help) usage; exit 0 ;;
@@ -53,7 +56,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ $bump_set -gt 1 ]]; then
-  echo "Pass at most one of --patch / --minor / --major" >&2
+  echo "Pass at most one of --patch / --minor / --major / --current" >&2
   exit 2
 fi
 
@@ -71,6 +74,7 @@ case "$bump" in
   patch) patch=$((patch + 1)) ;;
   minor) minor=$((minor + 1)); patch=0 ;;
   major) major=$((major + 1)); minor=0; patch=0 ;;
+  current) ;;
 esac
 
 new="${major}.${minor}.${patch}"

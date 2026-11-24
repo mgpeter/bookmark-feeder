@@ -10,6 +10,7 @@
 
     Requires `docker login -u mgpeter` first — this script will not handle credentials.
     -NoPush builds without releasing, and therefore does not bump VERSION.
+    -Current releases VERSION as it stands, for when the bump was already committed by hand.
 
     Deploy the NAS by the version tag, never :latest, so "which build is running?" always has
     an answer. The .env lines to paste are printed at the end.
@@ -33,6 +34,10 @@ param(
     [Parameter(ParameterSetName = 'Major')]
     [switch]$Major,
 
+    # Release VERSION unchanged (it was already bumped and committed).
+    [Parameter(ParameterSetName = 'Current')]
+    [switch]$Current,
+
     # Bump and build, but skip the push.
     [switch]$NoPush,
 
@@ -47,7 +52,7 @@ $versionFile = Join-Path $repoRoot 'VERSION'
 $namespace   = 'mgpeter'
 $services    = @('webapi', 'gateway', 'web')
 
-$bump = if ($Major) { 'major' } elseif ($Minor) { 'minor' } else { 'patch' }
+$bump = if ($Current) { 'current' } elseif ($Major) { 'major' } elseif ($Minor) { 'minor' } else { 'patch' }
 
 if (-not (Test-Path $versionFile)) { throw "VERSION file not found at $versionFile" }
 
@@ -62,6 +67,7 @@ switch ($bump) {
     'patch' { $patchN += 1 }
     'minor' { $minorN += 1; $patchN = 0 }
     'major' { $majorN += 1; $minorN = 0; $patchN = 0 }
+    'current' { }
 }
 
 $new = "$majorN.$minorN.$patchN"

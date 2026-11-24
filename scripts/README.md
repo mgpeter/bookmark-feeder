@@ -21,6 +21,7 @@ release leaves it untouched and re-running retries the same number rather than s
 ./scripts/docker-release.sh --dry-run         # show the bump, change nothing
 ./scripts/docker-release.sh --minor           # 0.1.0 -> 0.2.0, build, push
 ./scripts/docker-release.sh --patch --no-push
+./scripts/docker-release.sh --current         # VERSION was bumped in a commit; release it as-is
 ```
 
 ```powershell
@@ -30,6 +31,7 @@ release leaves it untouched and re-running retries the same number rather than s
 ./scripts/docker-release.ps1 -DryRun
 ./scripts/docker-release.ps1 -Minor
 ./scripts/docker-release.ps1 -Patch -NoPush
+./scripts/docker-release.ps1 -Current
 ```
 
 ## The compose file is generated
