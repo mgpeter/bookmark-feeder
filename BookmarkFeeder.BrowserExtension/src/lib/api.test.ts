@@ -104,6 +104,22 @@ describe('testConnection', () => {
     await expect(testConnection('http://x/api', 'bad')).rejects.toThrow(/key rejected/i)
   })
 
+  it('rejects a URL that serves the web app instead of the API (missing /api)', async () => {
+    const html = new Response('<!doctype html>', {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' },
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(html))
+
+    await expect(testConnection('https://nas', 'k')).rejects.toThrow(/must end in \/api/i)
+  })
+
+  it('explains a 405 as a URL missing /api', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 405 })))
+
+    await expect(postBatch('https://nas', 'k', items)).rejects.toThrow(/must end in \/api/i)
+  })
+
   it('reports an unreachable server', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
