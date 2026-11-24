@@ -43,8 +43,9 @@ class ViewController: NSViewController, WKNavigationDelegate, WKScriptMessageHan
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-        if (message.body as! String != "open-preferences") {
-            return;
+        // A non-string body used to crash the app here (as! String); ignore anything unexpected.
+        guard let body = message.body as? String, body == "open-preferences" else {
+            return
         }
 
         SFSafariApplication.showPreferencesForExtension(withIdentifier: extensionBundleIdentifier) { error in
