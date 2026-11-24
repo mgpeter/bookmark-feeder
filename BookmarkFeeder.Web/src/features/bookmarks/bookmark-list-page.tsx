@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CheckCheck, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useBookmarks, useMarkAllRead } from '@/api/bookmarks'
@@ -13,7 +13,7 @@ import { BookmarkEditDialog, type EditTarget } from './bookmark-edit-dialog'
 import { FacetPanel } from './facet-panel'
 import { MarkAllReadDialog } from './mark-all-read-dialog'
 import { SavedSearches } from './saved-searches'
-import { useBookmarkQuery } from './use-bookmark-query'
+import { clampedPage, useBookmarkQuery } from './use-bookmark-query'
 
 export function BookmarkListPage() {
   const { query, params, patch, view } = useBookmarkQuery()
@@ -26,6 +26,16 @@ export function BookmarkListPage() {
   const page = pagination?.page ?? query.page ?? 1
   const totalPages = pagination?.totalPages ?? 1
   const totalItems = pagination?.totalItems ?? 0
+
+  // Past the last page: go to the last real one. Placeholder data belongs to the previous query,
+  // so its page count says nothing about this one.
+  const clampTo =
+    pagination && !isPlaceholderData ? clampedPage(query.page ?? 1, pagination.totalPages) : null
+  useEffect(() => {
+    if (clampTo !== null) patch({ page: clampTo === 1 ? null : String(clampTo) })
+    // patch is a fresh closure each render; clampTo is the only input that matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clampTo])
 
   function markAll() {
     setConfirmMarkAll(false)

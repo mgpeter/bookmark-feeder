@@ -4,6 +4,16 @@ import type { BookmarkQuery, SortBy, SortOrder } from '@/types/models'
 export type ReadFilter = 'all' | 'read' | 'unread'
 export type ViewMode = 'grid' | 'list'
 
+/**
+ * The page to move to when the requested one is past the end, or null when it is fine. Deleting the
+ * last bookmark on the last page (or a stale link) otherwise strands you on an empty page, and the
+ * pager that would get you back only renders when there is more than one page. Zero pages means an
+ * empty result, where there is nowhere better to go.
+ */
+export function clampedPage(page: number, totalPages: number): number | null {
+  return totalPages >= 1 && page > totalPages ? totalPages : null
+}
+
 export function useBookmarkQuery() {
   const [params, setParams] = useSearchParams()
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { useBookmarkQuery } from './use-bookmark-query'
+import { clampedPage, useBookmarkQuery } from './use-bookmark-query'
 
 function at(url: string) {
   return {
@@ -37,5 +37,21 @@ describe('useBookmarkQuery sorting', () => {
     const { result } = renderHook(() => useBookmarkQuery(), at('/bookmarks?q=graphql'))
 
     expect(result.current.query.search).toBe('graphql')
+  })
+})
+
+describe('clampedPage', () => {
+  it('moves a page past the end to the last real page', () => {
+    // The last bookmark on page 3 was deleted, leaving two pages.
+    expect(clampedPage(3, 2)).toBe(2)
+  })
+
+  it('leaves a page within range alone', () => {
+    expect(clampedPage(2, 2)).toBeNull()
+    expect(clampedPage(1, 5)).toBeNull()
+  })
+
+  it('does nothing when the result is empty', () => {
+    expect(clampedPage(4, 0)).toBeNull()
   })
 })
