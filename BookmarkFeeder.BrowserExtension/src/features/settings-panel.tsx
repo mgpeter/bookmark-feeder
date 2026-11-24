@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { dashboardUrl, testConnection } from '@/lib/api'
+import { requestHostAccess } from '@/lib/host-access'
 import type { Settings } from '@/lib/types'
 
 interface SettingsPanelProps {
@@ -50,8 +51,13 @@ export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
       return
     }
     setError(null)
+    // First, while the click still counts as a user gesture.
+    const access = requestHostAccess(url)
     await onSave({ serverUrl: url, apiKey: apiKey.trim() })
     toast.success('Settings saved')
+    if (!(await access)) {
+      toast.info('Access to the server was not granted - syncing may fail. Save again to be asked again.')
+    }
   }
 
   async function test() {
@@ -62,8 +68,10 @@ export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
       return
     }
     setError(null)
+    const access = requestHostAccess(url)
     setTesting(true)
     try {
+      await access
       await testConnection(url, apiKey.trim())
       toast.success('Connection successful')
     } catch (err) {

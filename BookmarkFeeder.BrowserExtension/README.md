@@ -157,9 +157,12 @@ dist/                  # build output - this is what you load unpacked
   (`docs/specs/2026-07-14-extension-auto-sync/`); `src/lib/sync.ts` is already UI-free so the service
   worker can reuse it.
 - **Not on any store yet** - load unpacked, or see
-  `docs/specs/2026-07-14-extension-publishing/`. That spec also covers narrowing
-  `host_permissions` - currently `http://localhost:*/*` and `https://*/*`, i.e. every HTTPS site -
-  down to just the server you configure. Worth doing before any store review.
+  `docs/specs/2026-07-14-extension-publishing/`.
+
+Host access is requested at runtime for **just the server you configure**: the manifest lists the
+patterns only as `optional_host_permissions`, and **Save** or **Test connection** asks for that
+one origin (the browser prompts once). Declining still works - the API allows any origin over
+CORS - but Safari's per-site access relies on the grant.
 
 ## License
 

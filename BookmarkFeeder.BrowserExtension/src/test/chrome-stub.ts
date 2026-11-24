@@ -62,6 +62,9 @@ export function installChromeStub({
         return [node]
       }),
     },
+    permissions: {
+      request: vi.fn(async () => true),
+    },
     tabs: {
       create: vi.fn(async (props: { url: string }) => ({ id: 1, ...props })),
     },

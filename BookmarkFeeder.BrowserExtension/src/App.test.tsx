@@ -183,6 +183,21 @@ describe('App', () => {
     )
   })
 
+  it('asks for access to the configured server only, when settings are saved', async () => {
+    const user = userEvent.setup()
+    const { stub } = installChromeStub({ tree: sampleTree() })
+    render(<App />)
+
+    await user.type(await screen.findByLabelText(/server url/i), 'https://nas.example.ts.net:8443/api')
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    await waitFor(() =>
+      expect(stub.permissions.request).toHaveBeenCalledWith({
+        origins: ['https://nas.example.ts.net/*'],
+      }),
+    )
+  })
+
   it('keeps the API key masked', async () => {
     const user = userEvent.setup()
     installChromeStub({ tree: sampleTree(), storage: configured })
