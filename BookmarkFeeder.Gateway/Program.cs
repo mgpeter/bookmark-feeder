@@ -6,6 +6,12 @@ builder.AddServiceDefaults();
 
 // YARP reverse proxy: routes come from configuration; destination addresses like
 // "http://api" / "http://web" are resolved via Aspire service discovery.
+//
+// Client addresses: the published container runs with ASPNETCORE_FORWARDEDHEADERS_ENABLED=true, so
+// ASP.NET consumes the X-Forwarded-For set by the TLS terminator (tailscale serve) and
+// RemoteIpAddress is the real client. YARP's default then SETS X-Forwarded-For to that address, and
+// the API's per-IP rate-limit partition sees one entry per client. Do not switch to Append: the API
+// would then need a larger ForwardLimit, which lets a client choose its own partition.
 builder.Services.AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddServiceDiscoveryDestinationResolver()
