@@ -41,8 +41,13 @@ async function request(
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch {
-    // fetch only rejects on network-level failures (server down, DNS, CORS).
-    throw new ApiError(0, 'Could not reach the server — check the URL and that it is running.')
+    // fetch only rejects on network-level failures (server down, DNS, CORS). In Safari it also
+    // rejects when the user has not granted the extension access to the server's site.
+    throw new ApiError(
+      0,
+      'Could not reach the server — check the URL and that it is running. In Safari, also allow ' +
+        'BookmarkFeeder to access this site (Safari Settings → Extensions).',
+    )
   }
 
   if (res.ok) return res
@@ -67,6 +72,11 @@ async function request(
         ? `Too many syncs — try again in ${retryAfter} seconds.`
         : 'Too many syncs — try again shortly.',
     )
+  }
+
+  if (res.status === 405) {
+    // POSTs that reach the SPA's nginx instead of the API come back 405.
+    throw new ApiError(405, NOT_THE_API)
   }
 
   throw new ApiError(res.status, await errorMessage(res))
@@ -98,7 +108,15 @@ export async function postBatch(
   return (await res.json()) as BatchResult
 }
 
+const NOT_THE_API =
+  'That URL serves the web app, not the API — the Server URL must end in /api.'
+
 /** Verifies the server URL and API key with a cheap authenticated read. */
 export async function testConnection(serverUrl: string, apiKey: string): Promise<void> {
-  await request('GET', serverUrl, '/tags', apiKey)
+  const res = await request('GET', serverUrl, '/tags', apiKey)
+  // Behind the gateway, anything outside /api is the SPA, whose fallback answers every GET with
+  // index.html and a 200 - so a URL missing /api would "pass" here and fail later with a 405.
+  if (!(res.headers.get('Content-Type') ?? '').includes('json')) {
+    throw new ApiError(0, NOT_THE_API)
+  }
 }
