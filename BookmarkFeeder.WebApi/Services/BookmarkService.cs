@@ -463,7 +463,34 @@ public class BookmarkService(
                 .Where(b => b.BookmarkTags.Any(bt => EF.Functions.ILike(bt.Tag.Name, tagPattern, "\\")))
                 .Select(b => b.Id);
 
+            // Full-text matches whole words only, so typing "moonlig" on the way to "moonlight"
+            // found nothing. This branch matches each fragment as a substring of the title,
+            // description or url. Its hits have no rank of their own, so a whole-word hit still
+            // sorts first. This branch cannot use the GIN index and scans the owner's rows, which
+            // is cheap at personal-collection size. A pg_trgm index is the fix if that changes.
             var matchingIds = textMatches.Union(tagMatches);
+            var fragments = SearchFragments.Parse(searchTerm);
+            if (fragments.Include.Count > 0)
+            {
+                IQueryable<Bookmark> substringMatches = context.Bookmarks;
+                foreach (var fragment in fragments.Include)
+                {
+                    var pattern = $"%{EscapeLike(fragment)}%";
+                    substringMatches = substringMatches.Where(b =>
+                        EF.Functions.ILike(b.Title, pattern, "\\") ||
+                        (b.Description != null && EF.Functions.ILike(b.Description, pattern, "\\")) ||
+                        EF.Functions.ILike(b.Url, pattern, "\\"));
+                }
+                foreach (var fragment in fragments.Exclude)
+                {
+                    var pattern = $"%{EscapeLike(fragment)}%";
+                    substringMatches = substringMatches.Where(b =>
+                        !EF.Functions.ILike(b.Title, pattern, "\\") &&
+                        (b.Description == null || !EF.Functions.ILike(b.Description, pattern, "\\")) &&
+                        !EF.Functions.ILike(b.Url, pattern, "\\"));
+                }
+                matchingIds = matchingIds.Union(substringMatches.Select(b => b.Id));
+            }
             q = q.Where(b => matchingIds.Contains(b.Id));
         }
 

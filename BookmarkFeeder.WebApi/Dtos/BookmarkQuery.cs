@@ -7,7 +7,8 @@ public class BookmarkQuery
     public int? PageSize { get; set; }
 
     /// <summary>
-    /// Full-text search over title, url and description (ranked), or an exact-ish tag-name match.
+    /// Full-text search over title, url and description (ranked), plus a substring match so a
+    /// partial word ("moonlig") finds its bookmark, plus a tag-name match.
     /// Supports websearch syntax: "quoted phrase", OR, -negated.
     /// </summary>
     public string? Search { get; set; }

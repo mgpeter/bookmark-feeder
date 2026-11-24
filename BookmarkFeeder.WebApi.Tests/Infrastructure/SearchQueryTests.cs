@@ -82,6 +82,60 @@ public class SearchQueryTests(PostgresApiFactory factory) : IClassFixture<Postgr
     }
 
     [Fact]
+    public async Task Search_MatchesTheStartOfAWord_WhileStillTyping()
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var token = Token();
+        await Create(client, "https://stream-" + Guid.NewGuid().ToString("N")[..8] + ".example.org",
+            $"{token}light Game Streaming");
+
+        // A prefix is not a word, so full-text search alone found nothing for it.
+        var page = await Search(client, $"search={token}lig");
+
+        page.Data.Should().ContainSingle().Which.Title.Should().StartWith(token);
+    }
+
+    [Fact]
+    public async Task Search_MatchesAFragmentInsideAWordOrUrl()
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var token = Token();
+        await Create(client, $"https://moon{token}stream.example.org", "Untitled");
+
+        var page = await Search(client, $"search={token[2..]}stre");
+
+        page.Data.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Search_ByFragment_StillHonoursNegation()
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var token = Token();
+        await Create(client, $"https://{token}-1.example.com", $"{token}xyz alpha");
+        await Create(client, $"https://{token}-2.example.com", $"{token}xyz alphabet");
+
+        var page = await Search(client, $"search={token}x+-alphab");
+
+        page.Data.Should().ContainSingle().Which.Title.Should().EndWith("alpha");
+    }
+
+    [Fact]
+    public async Task Search_RanksWholeWordHitsAboveFragmentHits()
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var token = Token();
+        // The fragment-only hit is created last, so it is the newest and would lead on date.
+        await Create(client, $"https://{token}-w.example.com", $"{token} whole");
+        await Create(client, $"https://{token}-f.example.com", $"{token}suffix partial");
+
+        var page = await Search(client, $"search={token}");
+
+        page.Data.Should().HaveCount(2);
+        page.Data[0].Title.Should().EndWith("whole");
+    }
+
+    [Fact]
     public async Task Search_MatchesTagName()
     {
         var client = factory.CreateAuthenticatedClient();
