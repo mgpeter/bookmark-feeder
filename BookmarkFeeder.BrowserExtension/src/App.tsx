@@ -61,7 +61,8 @@ export function App() {
         </TabsContent>
       </Tabs>
 
-      <Toaster position="bottom-center" />
+      {/* Top, over the header: at the bottom a toast covers the action buttons it is reporting on. */}
+      <Toaster position="top-center" offset={8} />
     </div>
   )
 }
