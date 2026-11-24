@@ -34,7 +34,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { cn } from '@/lib/utils'
-import { hostname, relativeDate } from '@/lib/format'
+import { hostname, relativeDate, safeHref } from '@/lib/format'
 import type { ViewMode } from './use-bookmark-query'
 
 interface Props {
@@ -49,6 +49,7 @@ export function BookmarkCard({ bookmark, view, onEdit, searchTerm }: Props) {
   const markRead = useMarkRead()
   const del = useDeleteBookmark()
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const href = safeHref(bookmark.url)
   const category = bookmark.categories[0]
 
   function toggleRead() {
@@ -70,8 +71,8 @@ export function BookmarkCard({ bookmark, view, onEdit, searchTerm }: Props) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild>
-          <a href={bookmark.url} target="_blank" rel="noreferrer">
+        <DropdownMenuItem asChild disabled={!href}>
+          <a href={href} target="_blank" rel="noreferrer">
             <ExternalLink className="mr-2 h-4 w-4" />
             Open
           </a>
@@ -134,7 +135,7 @@ export function BookmarkCard({ bookmark, view, onEdit, searchTerm }: Props) {
         <FaviconAvatar url={bookmark.url} faviconUrl={bookmark.faviconUrl} />
         <div className="min-w-0 flex-1">
           <a
-            href={bookmark.url}
+            href={href}
             target="_blank"
             rel="noreferrer"
             className="truncate font-medium hover:underline"
@@ -159,7 +160,7 @@ export function BookmarkCard({ bookmark, view, onEdit, searchTerm }: Props) {
         <FaviconAvatar url={bookmark.url} faviconUrl={bookmark.faviconUrl} />
         <div className="min-w-0 flex-1">
           <a
-            href={bookmark.url}
+            href={href}
             target="_blank"
             rel="noreferrer"
             className="line-clamp-2 font-medium leading-tight hover:underline"

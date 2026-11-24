@@ -7,7 +7,7 @@ import { FaviconAvatar } from '@/components/favicon-avatar'
 import { TagChip } from '@/components/tag-chip'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { hostname, relativeDate } from '@/lib/format'
+import { hostname, relativeDate, safeHref } from '@/lib/format'
 
 export function DashboardPage() {
   const all = useBookmarks({ pageSize: 1 })
@@ -49,7 +49,7 @@ export function DashboardPage() {
               recent.data.data.map((b) => (
                 <a
                   key={b.id}
-                  href={b.url}
+                  href={safeHref(b.url)}
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-3 rounded-md p-2 hover:bg-accent"
