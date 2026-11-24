@@ -54,6 +54,9 @@ export function BookmarkEditDialog({ target, onClose }: Props) {
   const update = useUpdateBookmark()
   const categories = useCategories()
   const flat = categories.data ? flattenCategories(categories.data) : []
+  // Not react-hook-form's isSubmitting: onSubmit fires mutate() and returns, so that is never true
+  // while the request is in flight, and a second click would create the bookmark twice.
+  const saving = create.isPending || update.isPending
 
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
@@ -64,7 +67,7 @@ export function BookmarkEditDialog({ target, onClose }: Props) {
     reset,
     setValue,
     watch,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { url: '', title: '', description: '', categoryId: NONE, isRead: false },
@@ -95,6 +98,7 @@ export function BookmarkEditDialog({ target, onClose }: Props) {
   }
 
   function onSubmit(values: FormValues) {
+    if (saving) return
     const categoryId = values.categoryId === NONE ? null : values.categoryId
     const description = values.description || null
 
@@ -228,7 +232,7 @@ export function BookmarkEditDialog({ target, onClose }: Props) {
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={saving}>
               {editing ? 'Save' : 'Add'}
             </Button>
           </DialogFooter>

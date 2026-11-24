@@ -166,9 +166,12 @@ function TagFormDialog({ state, onClose }: { state: DialogState; onClose: () => 
     setColor(editing?.color ?? null)
   }, [state, editing])
 
+  // Enter in the name field calls save() directly, so the disabled button alone is not enough.
+  const saving = create.isPending || update.isPending
+
   function save() {
     const trimmed = name.trim()
-    if (!trimmed) return
+    if (!trimmed || saving) return
     const onError = (e: unknown) =>
       toast.error(
         e instanceof ApiError && e.status === 409
@@ -230,7 +233,7 @@ function TagFormDialog({ state, onClose }: { state: DialogState; onClose: () => 
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={!name.trim()}>
+          <Button onClick={save} disabled={!name.trim() || saving}>
             {editing ? 'Save' : 'Create'}
           </Button>
         </DialogFooter>

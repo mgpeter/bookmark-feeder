@@ -214,9 +214,11 @@ function CategoryFormDialog({
   // In edit mode, prevent selecting self as parent (API also guards cycles).
   const parentOptions = editing ? flat.filter((f) => f.category.id !== editing.id) : flat
 
+  const saving = create.isPending || update.isPending
+
   function save() {
     const trimmed = name.trim()
-    if (!trimmed) return
+    if (!trimmed || saving) return
     const body = {
       name: trimmed,
       description: description.trim() || null,
@@ -291,7 +293,7 @@ function CategoryFormDialog({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={!name.trim()}>
+          <Button onClick={save} disabled={!name.trim() || saving}>
             {editing ? 'Save' : 'Create'}
           </Button>
         </DialogFooter>
