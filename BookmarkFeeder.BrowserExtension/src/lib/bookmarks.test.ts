@@ -1,6 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { installChromeStub, sampleTree } from '@/test/chrome-stub'
-import { collectBookmarks, collectFromFolders, listFolders } from './bookmarks'
+import {
+  collectBookmarks,
+  collectFromFolders,
+  isBookmarksApiAvailable,
+  listFolders,
+} from './bookmarks'
+
+describe('isBookmarksApiAvailable', () => {
+  beforeEach(() => vi.unstubAllGlobals())
+
+  it('is true when chrome.bookmarks exists', () => {
+    installChromeStub()
+    expect(isBookmarksApiAvailable()).toBe(true)
+  })
+
+  it('is false when the browser has no bookmarks API (older Safari)', () => {
+    const { stub } = installChromeStub()
+    vi.stubGlobal('chrome', { ...stub, bookmarks: undefined })
+    expect(isBookmarksApiAvailable()).toBe(false)
+  })
+})
 
 describe('listFolders', () => {
   beforeEach(() => vi.unstubAllGlobals())
@@ -102,5 +122,50 @@ describe('collectFromFolders', () => {
     ])
 
     expect(items.map((i) => i.url)).toEqual(['https://react.dev'])
+  })
+})
+
+describe('Safari (native bookmarks via the wrapper app)', () => {
+  beforeEach(() => vi.unstubAllGlobals())
+
+  /** Safari: no chrome.bookmarks, but sendNativeMessage answers with the whole tree. */
+  function installSafariStub(reply: unknown) {
+    const { stub } = installChromeStub()
+    const sendNativeMessage = vi.fn(async () => reply)
+    vi.stubGlobal('chrome', { ...stub, bookmarks: undefined, runtime: { sendNativeMessage } })
+    return sendNativeMessage
+  }
+
+  it('counts as available and lists folders from the native tree', async () => {
+    const send = installSafariStub({ tree: sampleTree()[0] })
+
+    expect(isBookmarksApiAvailable()).toBe(true)
+    expect(await listFolders()).toEqual([
+      { id: '1', title: 'Bookmarks Bar', depth: 1 },
+      { id: '2', title: 'Dev', depth: 2 },
+      { id: '3', title: 'React', depth: 3 },
+    ])
+    expect(send).toHaveBeenCalledWith('com.usualexpat.BookmarkFeeder', { type: 'getTree' })
+  })
+
+  it('collects selected folders from one native read, skipping missing ones', async () => {
+    const send = installSafariStub({ tree: sampleTree()[0] })
+
+    const items = await collectFromFolders([
+      { id: '3', title: 'React', depth: 3 },
+      { id: 'gone', title: 'Deleted', depth: 1 },
+    ])
+
+    expect(items.map((i) => i.url)).toEqual(['https://react.dev'])
+    expect(send).toHaveBeenCalledTimes(1)
+  })
+
+  it('surfaces a missing Full Disk Access grant as a typed error', async () => {
+    installSafariStub({ error: 'no-access', message: 'macOS blocked access.' })
+
+    await expect(listFolders()).rejects.toMatchObject({
+      name: 'BookmarksAccessError',
+      code: 'no-access',
+    })
   })
 })

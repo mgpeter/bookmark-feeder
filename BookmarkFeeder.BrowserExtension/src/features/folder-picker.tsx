@@ -3,7 +3,7 @@ import { toast } from 'sonner'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { listFolders } from '@/lib/bookmarks'
+import { BookmarksAccessError, isBookmarksApiAvailable, listFolders } from '@/lib/bookmarks'
 import type { BookmarkFolder, Settings } from '@/lib/types'
 
 interface FolderPickerProps {
@@ -13,11 +13,16 @@ interface FolderPickerProps {
 
 /** Lets the user pick which bookmark folders get synced. */
 export function FolderPicker({ selected, onChange }: FolderPickerProps) {
+  const [supported] = useState(isBookmarksApiAvailable)
   const [folders, setFolders] = useState<BookmarkFolder[] | null>(null)
+  const [loadError, setLoadError] = useState<unknown>(null)
 
   useEffect(() => {
-    void listFolders().then(setFolders)
-  }, [])
+    if (!supported) return
+    listFolders()
+      .then(setFolders)
+      .catch(setLoadError)
+  }, [supported])
 
   async function toggle(folder: BookmarkFolder, checked: boolean) {
     const ids = new Set(selected.map((f) => f.id))
@@ -33,6 +38,40 @@ export function FolderPicker({ selected, onChange }: FolderPickerProps) {
       // chrome.storage.sync has a per-item quota; a huge selection can be rejected.
       toast.error('Could not save the folder selection.')
     }
+  }
+
+  if (!supported) {
+    return (
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        This browser does not let extensions read bookmarks.
+      </p>
+    )
+  }
+
+  if (loadError) {
+    if (loadError instanceof BookmarksAccessError && loadError.code === 'no-access') {
+      // Safari keeps its bookmarks in a privacy-protected folder that only Full Disk Access opens.
+      return (
+        <div className="space-y-2 py-4 text-sm">
+          <p className="font-medium">BookmarkFeeder needs Full Disk Access to read Safari bookmarks.</p>
+          <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
+            <li>Open System Settings → Privacy &amp; Security → Full Disk Access.</li>
+            <li>Click +, choose the BookmarkFeeder app, and switch it on.</li>
+            <li>Close and reopen this popup.</li>
+          </ol>
+          <p className="text-xs text-muted-foreground">
+            Only Safari&apos;s bookmarks file is read, and nothing is sent anywhere except your own
+            server.
+          </p>
+        </div>
+      )
+    }
+    return (
+      <p className="py-6 text-center text-sm text-destructive">
+        Could not read your bookmarks
+        {loadError instanceof BookmarksAccessError ? `: ${loadError.message}` : '.'}
+      </p>
+    )
   }
 
   if (!folders) {

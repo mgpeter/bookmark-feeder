@@ -2,9 +2,78 @@ import { FIELD_LIMITS, type BatchBookmarkItem, type BookmarkFolder } from './typ
 
 type Node = chrome.bookmarks.BookmarkTreeNode
 
+/** Bundle id of the Safari wrapper app; Safari routes native messages to its extension handler. */
+const SAFARI_APP_ID = 'com.usualexpat.BookmarkFeeder'
+
+/** Thrown when bookmarks exist but cannot be read; `code` comes from the native handler. */
+export class BookmarksAccessError extends Error {
+  code: string
+
+  constructor(code: string, message: string) {
+    super(message)
+    this.name = 'BookmarksAccessError'
+    this.code = code
+  }
+}
+
+type NativeReply = { tree: Node } | { error: string; message?: string }
+
+/**
+ * Safari has no `bookmarks` API for extensions. Its build instead carries `nativeMessaging`, and
+ * the wrapper app's handler (safari/…/SafariBookmarks.swift) reads Safari's Bookmarks.plist and
+ * returns it shaped like a `chrome.bookmarks` tree. Chrome lacks `sendNativeMessage` without that
+ * permission, so this only kicks in for Safari.
+ */
+function usesNativeBookmarks(): boolean {
+  return (
+    typeof chrome !== 'undefined' &&
+    !chrome.bookmarks &&
+    typeof chrome.runtime?.sendNativeMessage === 'function'
+  )
+}
+
+async function nativeTree(): Promise<Node[]> {
+  let reply: NativeReply | undefined
+  try {
+    reply = (await chrome.runtime.sendNativeMessage(SAFARI_APP_ID, { type: 'getTree' })) as
+      | NativeReply
+      | undefined
+  } catch (error) {
+    throw new BookmarksAccessError('native-unavailable', String(error))
+  }
+  if (!reply) throw new BookmarksAccessError('native-unavailable', 'No reply from the BookmarkFeeder app.')
+  if ('error' in reply) throw new BookmarksAccessError(reply.error, reply.message ?? reply.error)
+  return [reply.tree]
+}
+
+function findNode(id: string, nodes: Node[]): Node | undefined {
+  for (const node of nodes) {
+    if (node.id === id) return node
+    const hit = node.children && findNode(id, node.children)
+    if (hit) return hit
+  }
+  return undefined
+}
+
+/** `chrome.bookmarks.getTree`, or Safari's native equivalent. */
+function getTree(): Promise<Node[]> {
+  return usesNativeBookmarks() ? nativeTree() : chrome.bookmarks.getTree()
+}
+
+/**
+ * Whether bookmarks can be read at all: Chrome and Edge through `chrome.bookmarks`, Safari through
+ * the native handler.
+ */
+export function isBookmarksApiAvailable(): boolean {
+  return (
+    typeof chrome !== 'undefined' &&
+    (typeof chrome.bookmarks?.getTree === 'function' || usesNativeBookmarks())
+  )
+}
+
 /** Lists every folder in the bookmark tree, skipping the unnamed root. */
 export async function listFolders(): Promise<BookmarkFolder[]> {
-  const tree = await chrome.bookmarks.getTree()
+  const tree = await getTree()
   return tree.flatMap((root) => walkFolders(root, 0))
 }
 
@@ -47,17 +116,23 @@ export async function collectFromFolders(
   folders: BookmarkFolder[],
 ): Promise<BatchBookmarkItem[]> {
   const items: BatchBookmarkItem[] = []
+  // Safari's native handler only returns the whole tree, so read it once for every folder.
+  const safariTree = usesNativeBookmarks() ? await nativeTree() : null
 
   for (const folder of folders) {
-    let subTree: Node[]
-    try {
-      subTree = await chrome.bookmarks.getSubTree(folder.id)
-    } catch {
-      // The folder was deleted in the browser but is still in our stored selection;
-      // skip it rather than failing the whole sync.
-      continue
+    let node: Node | undefined
+    if (safariTree) {
+      node = findNode(folder.id, safariTree)
+    } else {
+      try {
+        node = (await chrome.bookmarks.getSubTree(folder.id))[0]
+      } catch {
+        node = undefined
+      }
     }
-    if (subTree[0]) items.push(...collectBookmarks(subTree[0], folder.title))
+    // A folder deleted in the browser but still in our stored selection is skipped rather than
+    // failing the whole sync.
+    if (node) items.push(...collectBookmarks(node, folder.title))
   }
 
   return items
