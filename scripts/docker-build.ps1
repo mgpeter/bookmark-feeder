@@ -42,7 +42,9 @@ if (-not $Version) { throw 'No version to build' }
 
 # A running AppHost holds BookmarkFeeder.WebApi.exe open and the build fails with a confusing
 # file-lock error. Say so up front rather than letting MSBuild explain it badly.
-$running = Get-Process -Name 'BookmarkFeeder*' -ErrorAction SilentlyContinue
+# 'BookmarkFeeder.*', not 'BookmarkFeeder*': the Safari wrapper app's process is plain
+# "BookmarkFeeder" and holds nothing the build needs.
+$running = Get-Process -Name 'BookmarkFeeder.*' -ErrorAction SilentlyContinue
 if ($running) {
     throw "Stop the Aspire AppHost first — it locks the build output. Running: $($running.Name -join ', ')"
 }

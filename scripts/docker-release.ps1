@@ -56,6 +56,15 @@ $bump = if ($Current) { 'current' } elseif ($Major) { 'major' } elseif ($Minor) 
 
 if (-not (Test-Path $versionFile)) { throw "VERSION file not found at $versionFile" }
 
+# Images are built from the working tree, so uncommitted changes would ship under a version
+# number no commit describes. A -NoPush or -DryRun build is fine either way.
+if (-not $NoPush -and -not $DryRun) {
+    $dirty = & git -C $repoRoot status --porcelain
+    if ($dirty) {
+        throw "Uncommitted changes in $repoRoot - commit or stash them before releasing.`n$($dirty -join "`n")"
+    }
+}
+
 $current = (Get-Content -Raw -Path $versionFile).Trim()
 if ($current -notmatch '^\d+\.\d+\.\d+$') {
     throw "VERSION file does not contain a valid semver: '$current'"

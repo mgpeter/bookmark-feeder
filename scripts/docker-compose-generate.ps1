@@ -42,7 +42,9 @@ if (-not (Get-Command aspire -ErrorAction SilentlyContinue)) {
 
 # A running AppHost holds BookmarkFeeder.WebApi.exe open; publish builds the AppHost and fails on
 # the file lock with an error that does not mention the AppHost at all.
-$running = Get-Process -Name 'BookmarkFeeder*' -ErrorAction SilentlyContinue
+# 'BookmarkFeeder.*', not 'BookmarkFeeder*': the Safari wrapper app's process is plain
+# "BookmarkFeeder" and holds nothing the build needs.
+$running = Get-Process -Name 'BookmarkFeeder.*' -ErrorAction SilentlyContinue
 if ($running) {
     throw "Stop the Aspire AppHost first — it locks the build output. Running: $($running.Name -join ', ')"
 }
@@ -51,15 +53,22 @@ $target = if ($Check) { Join-Path ([System.IO.Path]::GetTempPath()) "bookmarkfee
 
 Write-Host "Generating compose from $([System.IO.Path]::GetFileName($appHost)) -> $target" -ForegroundColor Cyan
 
-& aspire publish --apphost $appHost -o $target --non-interactive --nologo
-if ($LASTEXITCODE -ne 0) { throw 'aspire publish failed' }
+try {
+    & aspire publish --apphost $appHost -o $target --non-interactive --nologo
+    if ($LASTEXITCODE -ne 0) { throw 'aspire publish failed' }
+
+    if ($Check) {
+        $generated = Join-Path $target 'docker-compose.yaml'
+        if (-not (Test-Path $composeFile)) { throw "No committed compose at $composeFile" }
+        $difference = Compare-Object (Get-Content $composeFile) (Get-Content $generated)
+    }
+}
+finally {
+    # The -Check temp folder must not be left behind when publish fails.
+    if ($Check) { Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue }
+}
 
 if ($Check) {
-    $generated = Join-Path $target 'docker-compose.yaml'
-    if (-not (Test-Path $composeFile)) { throw "No committed compose at $composeFile" }
-
-    $difference = Compare-Object (Get-Content $composeFile) (Get-Content $generated)
-    Remove-Item $target -Recurse -Force -ErrorAction SilentlyContinue
 
     if ($difference) {
         $difference | Format-Table -AutoSize | Out-String | Write-Host

@@ -62,6 +62,14 @@ fi
 
 [[ -f "$VERSION_FILE" ]] || { echo "VERSION file not found at $VERSION_FILE" >&2; exit 1; }
 
+# Images are built from the working tree, so uncommitted changes would ship under a version
+# number no commit describes. A --no-push or --dry-run build is fine either way.
+if [[ $no_push -eq 0 && $dry_run -eq 0 ]] && [[ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]]; then
+  echo "Uncommitted changes in $REPO_ROOT - commit or stash them before releasing." >&2
+  git -C "$REPO_ROOT" status --short >&2
+  exit 1
+fi
+
 current="$(tr -d '[:space:]' < "$VERSION_FILE")"
 if [[ ! "$current" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   echo "VERSION file does not contain a valid semver: '$current'" >&2

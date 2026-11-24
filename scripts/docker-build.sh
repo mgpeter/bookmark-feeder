@@ -32,7 +32,9 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --version) version="${2:-}"; shift ;;
+    --version)
+      [[ $# -ge 2 && -n "$2" ]] || { echo "--version needs a value, e.g. --version 1.2.3" >&2; exit 2; }
+      version="$2"; shift ;;
     --no-latest) no_latest=1 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "Unknown option: $1" >&2; usage >&2; exit 2 ;;
