@@ -89,11 +89,16 @@ if ($NoPush) {
     return
 }
 
+# Exactly this release's two tags. --all-tags would also publish every other tag the local image
+# happens to have - a `docker-build -Version 1.2.3-test`, or a -NoPush build of a version that was
+# never released.
 foreach ($service in $services) {
-    $image = "$namespace/bookmarkfeeder-$service"
-    Write-Host "Pushing $image (all tags) ..." -ForegroundColor DarkGray
-    & docker push --all-tags $image
-    if ($LASTEXITCODE -ne 0) { throw "docker push failed for $service" }
+    foreach ($tag in @($new, 'latest')) {
+        $image = "$namespace/bookmarkfeeder-$service`:$tag"
+        Write-Host "Pushing $image ..." -ForegroundColor DarkGray
+        & docker push $image
+        if ($LASTEXITCODE -ne 0) { throw "docker push failed for $image" }
+    }
 }
 
 # Only now: VERSION records what was actually released. A failed push leaves it untouched, so

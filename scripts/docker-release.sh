@@ -97,9 +97,14 @@ if [[ $no_push -eq 1 ]]; then
   exit 0
 fi
 
+# Exactly this release's two tags. --all-tags would also publish every other tag the local image
+# happens to have - a `docker-build --version 1.2.3-test`, or a --no-push build of a version that
+# was never released.
 for service in "${SERVICES[@]}"; do
-  echo "Pushing $NAMESPACE/bookmarkfeeder-$service (all tags) ..."
-  docker push --all-tags "$NAMESPACE/bookmarkfeeder-$service"
+  for tag in "$new" latest; do
+    echo "Pushing $NAMESPACE/bookmarkfeeder-$service:$tag ..."
+    docker push "$NAMESPACE/bookmarkfeeder-$service:$tag"
+  done
 done
 
 # Only now: VERSION records what was actually released. A failed push leaves it untouched, so
