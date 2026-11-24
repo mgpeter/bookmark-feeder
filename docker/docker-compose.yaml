@@ -3,7 +3,7 @@ services:
   compose-dashboard:
     image: "mcr.microsoft.com/dotnet/aspire-dashboard:9.5.2"
     ports:
-      - "18888:18888"
+      - "${DASHBOARD_BIND:-127.0.0.1}:18888:18888"
     expose:
       - "18889"
       - "18890"

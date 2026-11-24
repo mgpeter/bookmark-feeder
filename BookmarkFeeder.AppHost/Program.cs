@@ -77,9 +77,12 @@ builder.AddDockerComposeEnvironment("compose")
             dashboardService.Image = "mcr.microsoft.com/dotnet/aspire-dashboard:9.5.2";
 
             // "18888" alone publishes to a RANDOM host port; pin it so the URL is stable.
-            // NOTE: this UI is unauthenticated — keep it on the LAN, never port-forward it.
+            // Loopback by default, like the gateway: the UI shows every request's telemetry
+            // (including the URLs the favicon worker fetches) over plain HTTP, so it must not be
+            // on the LAN or the tailnet unless asked for. Reach it with an SSH tunnel, or set
+            // DASHBOARD_BIND=0.0.0.0 to publish it on every interface.
             dashboardService.Ports.Clear();
-            dashboardService.Ports.Add("18888:18888");
+            dashboardService.Ports.Add("${DASHBOARD_BIND:-127.0.0.1}:18888:18888");
         }
     });
 

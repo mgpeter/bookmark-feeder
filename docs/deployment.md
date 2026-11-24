@@ -9,8 +9,9 @@ BookmarkFeeder runs as five containers behind one reverse-proxy gateway:
         compose-dashboard (telemetry, optional)
 ```
 
-Only **gateway** and the dashboard publish host ports, and the gateway publishes on **127.0.0.1**
-only - a TLS terminator in front is the sole way in. `webapi`, `web` and `postgres` are internal.
+Only **gateway** and the dashboard publish host ports, and both publish on **127.0.0.1** only - a
+TLS terminator in front of the gateway is the sole way in. `webapi`, `web` and `postgres` are
+internal.
 
 **TLS is required**, and it is not optional the way it used to be: signing in uses PKCE, which
 needs the browser's Web Crypto API, and browsers expose that only on secure origins. Step 8 sets it
@@ -166,6 +167,8 @@ Set:
 | `POSTGRES_PASSWORD` | `openssl rand -base64 24`. **Pick once** - the database keeps the password from first boot; changing it later locks the API out of its own data. |
 | `GATEWAY_PORT` | The port the TLS terminator forwards to, on 127.0.0.1. Defaults to 8081 - 8080 is a busy port (Glance uses it here) and DSM itself takes 5000/5001. |
 | `GATEWAY_BIND` | Optional. The host address the gateway publishes on, `127.0.0.1` by default. Set `0.0.0.0` only if the TLS terminator runs on another machine. |
+| `DASHBOARD_BIND` | Optional. The host address the telemetry dashboard (`:18888`) publishes on, `127.0.0.1` by default. |
+| `AUTH0_LEGACY_OWNER` | Only when upgrading from before 0.2.0: the Auth0 subject or email that gets the existing bookmarks. |
 | `*_IMAGE` | The three version tags from step 1. |
 
 You only ever revisit the `*_IMAGE` lines. `aspire publish` never overwrites this file - it only
@@ -355,5 +358,7 @@ app: `tailscale serve status` shows the mapping it actually has.
 **I lost an API key.** They cannot be recovered - only a hash is stored. Revoke it in
 **Settings → API keys** and create a replacement.
 
-**The dashboard on `:18888`** is unauthenticated and shows request telemetry. Keep it on the LAN;
-never port-forward it. Remove the service from the compose if you would rather not run it.
+**The dashboard on `:18888`** shows request telemetry over plain HTTP, so it publishes on
+127.0.0.1 only. From another machine, tunnel to it (`ssh -L 18888:127.0.0.1:18888 <nas>`, then
+<http://localhost:18888>) rather than setting `DASHBOARD_BIND=0.0.0.0`; never port-forward it.
+Remove the service from the compose if you would rather not run it.
