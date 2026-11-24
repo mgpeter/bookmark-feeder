@@ -86,4 +86,33 @@ describe('runSync', () => {
     await expect(runSync()).rejects.toThrow()
     expect(store.lastSync).toBeUndefined()
   })
+
+  it('splits a collection larger than one batch into several uploads and sums them', async () => {
+    const many = Array.from({ length: 5_001 }, (_, i) => ({
+      id: `b${i}`,
+      title: `B${i}`,
+      url: `https://site-${i}.example`,
+    }))
+    installChromeStub({
+      tree: [{ id: '0', title: '', children: [{ id: '9', title: 'Big', children: many }] }] as never,
+      storage: {
+        serverUrl: 'http://localhost:5180/api',
+        apiKey: 'dev-key',
+        selectedFolders: [{ id: '9', title: 'Big', depth: 1 }],
+      },
+    })
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      const count = (JSON.parse(init.body as string) as { bookmarks: unknown[] }).bookmarks.length
+      return new Response(
+        JSON.stringify({ summary: { total: count, created: count, skipped: 0, errors: 0 } }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await runSync()
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(result).toEqual({ total: 5_001, created: 5_001, skipped: 0, errors: 0 })
+  })
 })

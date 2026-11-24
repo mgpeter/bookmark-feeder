@@ -43,6 +43,12 @@ export interface Settings {
  * Field limits enforced by the API's BatchCreateRequestValidator. It validates the whole
  * request, so a single oversized field would reject every bookmark in the batch.
  */
+/**
+ * Bookmarks per upload. The API rejects batches over 10,000; half that keeps requests modest, and
+ * the sync rate limit (5 a minute) still fits 25,000 bookmarks in one sync.
+ */
+export const BATCH_SIZE = 5_000
+
 export const FIELD_LIMITS = {
   url: 2048,
   title: 500,

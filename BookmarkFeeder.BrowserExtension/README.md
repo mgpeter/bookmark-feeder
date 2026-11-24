@@ -9,7 +9,8 @@ there's a button to open it.
 
 - Pick which bookmark folders to sync; the selection persists in `chrome.storage.local`.
 - **Sync Now** walks the chosen folders recursively, preserves each bookmark's folder path as
-  `sourceFolder`, and uploads everything in **one** batch request.
+  `sourceFolder`, and uploads everything in **one** batch request (split into 5,000-bookmark
+  requests for very large collections; the API caps a batch at 10,000).
 - Duplicates are skipped server-side by URL, so re-syncing is safe and two browsers can feed one
   collection. Proven on real data: re-running Chrome's sync gave **0 created / 260 skipped**, and
   Edge then contributed **166 created / 261 skipped** into the same collection.

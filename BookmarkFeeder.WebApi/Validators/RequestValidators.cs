@@ -33,9 +33,18 @@ public class UpdateBookmarkRequestValidator : AbstractValidator<UpdateBookmarkRe
 
 public class BatchCreateRequestValidator : AbstractValidator<BatchCreateRequest>
 {
+    public const int MaxBatchItems = 10_000;
+
     public BatchCreateRequestValidator()
     {
-        RuleFor(x => x.Bookmarks).NotNull();
+        // Bounded so the sync rate limit (a few requests a minute) also bounds the load: without
+        // a cap one request within Kestrel's 30 MB body limit carried ~100k inserts, all queued
+        // for favicon fetching. The extension splits larger collections into several requests.
+        RuleFor(x => x.Bookmarks).NotNull()
+            .Must(b => b is null || b.Count <= MaxBatchItems)
+            .WithMessage($"A batch may hold at most {MaxBatchItems} bookmarks; split larger syncs.");
+        RuleFor(x => x.DefaultTags).Must(t => t is null || t.Length <= 20)
+            .WithMessage("At most 20 default tags.");
         RuleForEach(x => x.Bookmarks).ChildRules(item =>
         {
             item.RuleFor(b => b.Url).NotEmpty().MaximumLength(2048);

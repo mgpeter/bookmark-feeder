@@ -214,4 +214,18 @@ public class BookmarkApiTests(BookmarkApiFactory factory) : IClassFixture<Bookma
         tree.Select(n => n.Name).Should().BeEquivalentTo(["B", "C"], "nothing may drop out of the tree");
         tree.Single(n => n.Id == targetId).ParentCategoryId.Should().BeNull("the target takes A's place");
     }
+
+    [Fact]
+    public async Task Batch_OverTheSizeCap_IsRejected()
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var items = Enumerable.Range(0, BookmarkFeeder.WebApi.Validators.BatchCreateRequestValidator.MaxBatchItems + 1)
+            .Select(i => new BatchBookmarkItem($"https://cap-{i}.example.com", "x", null, null, null))
+            .ToList();
+
+        var response = await client.PostAsJsonAsync("/api/bookmarks/batch", new BatchCreateRequest(items));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadAsStringAsync()).Should().Contain("at most");
+    }
 }
