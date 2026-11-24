@@ -2,5 +2,7 @@ node_modules
 dist
 .vite
 coverage
-.env.development
+# Every .env file: Vite reads .env.production (and .env.local) at build time and would bake a
+# developer's local values into the published bundle. Runtime config comes from config.js instead.
+.env*
 *.log
