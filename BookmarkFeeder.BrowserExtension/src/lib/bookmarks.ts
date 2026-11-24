@@ -138,6 +138,14 @@ export async function collectFromFolders(
   return items
 }
 
-function truncate(value: string, max: number): string {
-  return value.length > max ? value.slice(0, max) : value
+/**
+ * Shortens to at most `max` UTF-16 units (what the API's length limits count) without splitting a
+ * surrogate pair. A lone high surrogate - half an emoji - is invalid UTF-16, and the API's JSON
+ * reader rejects the whole batch over it, so every sync would fail until that bookmark was edited.
+ */
+export function truncate(value: string, max: number): string {
+  if (value.length <= max) return value
+  const code = value.charCodeAt(max - 1)
+  const end = code >= 0xd800 && code <= 0xdbff ? max - 1 : max
+  return value.slice(0, end)
 }

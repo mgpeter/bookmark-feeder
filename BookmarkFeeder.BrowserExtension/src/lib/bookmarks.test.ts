@@ -5,6 +5,7 @@ import {
   collectFromFolders,
   isBookmarksApiAvailable,
   listFolders,
+  truncate,
 } from './bookmarks'
 
 describe('isBookmarksApiAvailable', () => {
@@ -167,5 +168,24 @@ describe('Safari (native bookmarks via the wrapper app)', () => {
       name: 'BookmarksAccessError',
       code: 'no-access',
     })
+  })
+})
+
+describe('truncate', () => {
+  it('leaves short values alone', () => {
+    expect(truncate('abc', 5)).toBe('abc')
+  })
+
+  it('never cuts an emoji in half', () => {
+    // '😀' is two UTF-16 units; a cut at 4 would keep only its high surrogate.
+    const cut = truncate('abc😀def', 4)
+
+    expect(cut).toBe('abc')
+    // No lone surrogate left at the end.
+    expect(/[\uD800-\uDBFF]$/.test(cut)).toBe(false)
+  })
+
+  it('keeps a whole emoji that fits', () => {
+    expect(truncate('abc😀def', 5)).toBe('abc😀')
   })
 })
