@@ -26,6 +26,9 @@ export function BookmarkListPage() {
   const page = pagination?.page ?? query.page ?? 1
   const totalPages = pagination?.totalPages ?? 1
   const totalItems = pagination?.totalItems ?? 0
+  // While a new filter loads, keepPreviousData shows the OLD result, so totalItems is the old
+  // filter's count. Confirming then would promise one number and mark another set.
+  const countIsCurrent = Boolean(pagination) && !isPlaceholderData
 
   // Past the last page: go to the last real one. Placeholder data belongs to the previous query,
   // so its page count says nothing about this one.
@@ -68,7 +71,7 @@ export function BookmarkListPage() {
           <Button
             variant="outline"
             onClick={() => setConfirmMarkAll(true)}
-            disabled={isLoading || totalItems === 0 || markAllRead.isPending}
+            disabled={!countIsCurrent || totalItems === 0 || markAllRead.isPending}
           >
             <CheckCheck className="mr-1 h-4 w-4" />
             Mark all as read
@@ -160,7 +163,7 @@ export function BookmarkListPage() {
       <BookmarkEditDialog target={dialogTarget} onClose={() => setDialogTarget(null)} />
 
       <MarkAllReadDialog
-        open={confirmMarkAll}
+        open={confirmMarkAll && countIsCurrent}
         count={totalItems}
         isFiltered={hasNarrowingFilters(query)}
         onConfirm={markAll}
