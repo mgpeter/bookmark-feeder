@@ -10,7 +10,7 @@ own NAS. Nothing leaves your network.
 
 ### Working today
 
-- **Bulk sync from the browser** - a Chrome/Edge extension walks your chosen bookmark folders,
+- **Bulk sync from the browser** - a Chrome/Edge/Safari extension walks your chosen bookmark folders,
   uploads them in one batch, preserves the folder path, and skips anything already stored. Dedupe is
   by URL across the whole collection, so two browsers can feed one library safely.
 - **Real search** - PostgreSQL full-text search over a weighted, GIN-indexed `tsvector`. Results are
@@ -154,6 +154,12 @@ Give each browser its own key, so you can revoke one machine without disturbing 
 carries far less authority than your login: it can upload bookmarks and read tags and categories,
 and nothing else.
 
+**Safari** (macOS) needs Xcode: the same popup is wrapped in a small macOS app, which also reads
+Safari's bookmarks for it (Safari has no bookmarks API for extensions), so it needs Full Disk
+Access. Run `npm run safari:build && npm run safari:open`, allow unsigned extensions, and enable it
+in Safari's settings - full steps in the
+[extension readme](BookmarkFeeder.BrowserExtension/README.md#safari).
+
 Local development needs no TLS. The popup runs on `chrome-extension://`, which is already a secure
 origin, and it never talks to Auth0 - so `http://localhost:5180/api` works as-is.
 
@@ -184,7 +190,7 @@ written **only after a successful push**. See [scripts/README.md](scripts/README
 | `BookmarkFeeder.Gateway` | YARP reverse proxy - the single entry point (`/api` → API, `/` → web) |
 | `BookmarkFeeder.WebApi` | Minimal API, EF Core, full-text search, favicon worker |
 | `BookmarkFeeder.Web` | React + Vite web app ([readme](BookmarkFeeder.Web/README.md)) |
-| `BookmarkFeeder.BrowserExtension` | Chrome/Edge MV3 extension ([readme](BookmarkFeeder.BrowserExtension/README.md)) |
+| `BookmarkFeeder.BrowserExtension` | Chrome/Edge/Safari MV3 extension ([readme](BookmarkFeeder.BrowserExtension/README.md)) |
 | `BookmarkFeeder.ServiceDefaults` | Shared telemetry, health checks, resilience |
 | `BookmarkFeeder.WebApi.Tests` | xUnit - unit + Testcontainers integration tests |
 | `docker/` | Generated compose + `.env` templates |
@@ -198,7 +204,7 @@ repositories), PostgreSQL 18, FluentValidation, OpenAPI + Scalar.
 **Auth** - Auth0 (OIDC) for the web app: Authorization Code + PKCE, RS256 bearer tokens. Hashed,
 sync-scoped API keys for the extension. Per-user data isolation via EF Core named query filters.
 **Frontend** - React 19, Vite 8, TypeScript, Tailwind v4, shadcn/ui, TanStack Query, React Router.
-**Extension** - Chrome/Edge Manifest V3, React + Vite + shadcn via `@crxjs/vite-plugin`.
+**Extension** - Chrome/Edge/Safari Manifest V3, React + Vite + shadcn via `@crxjs/vite-plugin`.
 **Infrastructure** - YARP gateway, Docker Compose, Docker Hub, Testcontainers.
 
 Full list: [docs/product/tech-stack.md](docs/product/tech-stack.md).

@@ -277,3 +277,44 @@ runaway extension cannot lock you out of the web app.
 **Negative:** TLS becomes mandatory for self-hosters; a third-party dependency and a sign-up step;
 a lost key can only be replaced, never recovered; the first account to sign in silently inherits
 the pre-migration collection, so you should sign in yourself before sharing the URL.
+
+## 2026-11-24: Safari via an Xcode Wrapper That Reads Bookmarks Natively
+
+**ID:** DEC-009
+**Status:** Accepted
+**Category:** Technical
+**Stakeholders:** Product Owner, Tech Lead
+
+### Decision
+
+Safari ships the same popup code as Chrome and Edge, built with `vite build --mode safari` into
+`dist-safari/` and wrapped in a macOS-only container app generated once by Apple's
+`safari-web-extension-packager`, committed under `BookmarkFeeder.BrowserExtension/safari/`. The
+Xcode project references `dist-safari/` instead of copying it.
+
+Safari 27 gives web extensions **no bookmarks API** - WebKit has an internal hook for one, but
+Safari does not wire it up. So in Safari the popup asks the extension's native handler over
+`runtime.sendNativeMessage`, and the handler reads `~/Library/Safari/Bookmarks.plist` and returns it
+in `chrome.bookmarks` tree shape. Only the source of the tree differs; the sync code is shared.
+
+For now the app is unsigned and local-only, macOS only.
+
+### Rationale
+
+Safari only loads web extensions that live inside an app, but it runs MV3 code and accepts the
+`chrome.*` namespace, so no fork of the source is needed. Reading the plist was preferred over
+dropping Safari for an export/import flow, because it keeps Safari a first-class "pick folders,
+sync" client like the others. The Safari manifest is derived at build time so Chrome and Edge never
+carry `nativeMessaging`.
+
+### Consequences
+
+**Positive:** One codebase for three browsers; Safari picks up a fresh build without regenerating
+the project; folder ids are Safari's stable bookmark UUIDs.
+
+**Negative:** Building for Safari needs Xcode on a Mac. Unsigned builds need Safari's "Allow
+unsigned extensions", which resets each time Safari quits. `~/Library/Safari` is privacy-protected,
+so the app needs **Full Disk Access**, and with ad-hoc signing that grant must be redone after
+every rebuild. The sandbox exception that permits reading the plist is a *temporary exception*,
+which the Mac App Store rejects - store distribution would need another route. The plist format is
+undocumented and could change with a Safari release. Safari bookmarks have no added date.
