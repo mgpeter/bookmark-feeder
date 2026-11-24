@@ -220,4 +220,28 @@ public class SearchQueryTests(PostgresApiFactory factory) : IClassFixture<Postgr
         // Newest first, matching the list's default expectation.
         first.Data.Select(b => b.DateAdded).Should().BeInDescendingOrder();
     }
+
+    [Fact]
+    public async Task Search_TreatsLikeWildcardsLiterally()
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var token = Token();
+        await Create(client, $"https://wild-{Guid.NewGuid():N}.example.com", "Unrelated", tags: [token]);
+
+        // "_" used to act as ILIKE's single-character wildcard against tag names.
+        var wildcard = token[..4] + "_" + token[5..];
+        var page = await Search(client, $"search={Uri.EscapeDataString(wildcard)}");
+
+        page.Data.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AHugePageNumber_ReturnsAnEmptyPage_NotAnError()
+    {
+        var response = await factory.CreateAuthenticatedClient()
+            .GetAsync($"/api/bookmarks?page={int.MaxValue}&pageSize=100");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadFromJsonAsync<PagedResult<BookmarkDto>>())!.Data.Should().BeEmpty();
+    }
 }

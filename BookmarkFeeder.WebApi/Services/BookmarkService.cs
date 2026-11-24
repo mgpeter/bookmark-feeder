@@ -36,7 +36,9 @@ public class BookmarkService(
 {
     public async Task<BookmarkListResult> GetBookmarksAsync(BookmarkQuery query, CancellationToken ct = default)
     {
-        var page = query.Page is > 0 ? query.Page.Value : 1;
+        // Capped so (page - 1) * pageSize cannot overflow into a negative OFFSET (a Postgres error,
+        // i.e. a 500); a page past the end simply comes back empty.
+        var page = Math.Clamp(query.Page is > 0 ? query.Page.Value : 1, 1, 1_000_000);
         var pageSize = Math.Clamp(query.PageSize ?? 20, 1, 100);
 
         await using var context = await contextFactory.CreateDbContextAsync(ct);
@@ -381,6 +383,10 @@ public class BookmarkService(
 
     // ----- helpers -----
 
+    /// <summary>Makes % and _ in a search term literal, so "100%" does not match every tag.</summary>
+    private static string EscapeLike(string term) =>
+        term.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+
     /// <summary>
     /// A browser's "date added", or null when it is absent or not a plausible timestamp. One
     /// corrupt value (microseconds, say, which overflows DateTime) used to throw and fail the whole
@@ -452,8 +458,9 @@ public class BookmarkService(
                 .Where(b => b.SearchVector.Matches(EF.Functions.WebSearchToTsQuery("english", searchTerm)))
                 .Select(b => b.Id);
 
+            var tagPattern = $"%{EscapeLike(searchTerm)}%";
             var tagMatches = context.Bookmarks
-                .Where(b => b.BookmarkTags.Any(bt => EF.Functions.ILike(bt.Tag.Name, $"%{searchTerm}%")))
+                .Where(b => b.BookmarkTags.Any(bt => EF.Functions.ILike(bt.Tag.Name, tagPattern, "\\")))
                 .Select(b => b.Id);
 
             var matchingIds = textMatches.Union(tagMatches);
@@ -533,13 +540,17 @@ public class BookmarkService(
             return ranked.ThenByDescending(b => b.DateAdded).ThenBy(b => b.Id);
         }
 
-        return effective switch
+        IOrderedQueryable<Bookmark> ordered = effective switch
         {
             "title" => descending ? q.OrderByDescending(b => b.Title) : q.OrderBy(b => b.Title),
             "url" => descending ? q.OrderByDescending(b => b.Url) : q.OrderBy(b => b.Url),
             "datemodified" => descending ? q.OrderByDescending(b => b.DateModified) : q.OrderBy(b => b.DateModified),
             _ => descending ? q.OrderByDescending(b => b.DateAdded) : q.OrderBy(b => b.DateAdded)
         };
+
+        // Same reason as above: an import gives many bookmarks the same title or timestamp, and
+        // without a total order those rows can repeat or vanish between pages.
+        return ordered.ThenBy(b => b.Id);
     }
 
     private static async Task<List<Tag>> ResolveTagsAsync(BookmarkDbContext context, IEnumerable<string> names, CancellationToken ct)
