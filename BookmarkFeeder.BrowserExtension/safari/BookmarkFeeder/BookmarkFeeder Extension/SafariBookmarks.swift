@@ -7,6 +7,7 @@
 //  `chrome.bookmarks.BookmarkTreeNode`, so the TypeScript sync code stays browser-agnostic.
 //
 
+import CryptoKit
 import Foundation
 
 enum SafariBookmarksError: Error {
@@ -63,7 +64,11 @@ enum SafariBookmarks {
             throw SafariBookmarksError.unreadable("unexpected format")
         }
 
-        var node = convert(root) ?? [:]
+        // The root is always a list. Anything else means the format changed under us - say so,
+        // rather than returning an empty tree that reads as "you have no bookmark folders".
+        guard var node = convert(root, path: []) else {
+            throw SafariBookmarksError.unreadable("unexpected format")
+        }
         node["id"] = "root"
         node["title"] = ""
         return node
@@ -71,9 +76,15 @@ enum SafariBookmarks {
 
     /// Converts one plist entry. Returns nil for entries that are not bookmarks or folders
     /// (the History proxy, for example).
-    private static func convert(_ entry: [String: Any]) -> [String: Any]? {
+    private static func convert(_ entry: [String: Any], path: [String]) -> [String: Any]? {
         let type = entry["WebBookmarkType"] as? String
-        let id = entry["WebBookmarkUUID"] as? String ?? UUID().uuidString
+        let title = entry["Title"] as? String ?? ""
+        // The id must be the same on every read: the popup stores selected folder ids and looks
+        // them up again at sync time. Safari normally supplies a UUID; when it does not, derive one
+        // from the folder path, never a random one - that would make a selected folder silently
+        // vanish from every later sync.
+        let id = entry["WebBookmarkUUID"] as? String
+            ?? stableId(path + [title, entry["URLString"] as? String ?? ""])
 
         switch type {
         case "WebBookmarkTypeLeaf":
@@ -92,12 +103,18 @@ enum SafariBookmarks {
             return node
 
         case "WebBookmarkTypeList":
-            let children = (entry["Children"] as? [[String: Any]] ?? []).compactMap(convert)
-            return ["id": id, "title": displayTitle(entry["Title"] as? String ?? ""), "children": children]
+            let children = (entry["Children"] as? [[String: Any]] ?? [])
+                .compactMap { convert($0, path: path + [title]) }
+            return ["id": id, "title": displayTitle(title), "children": children]
 
         default:
             return nil
         }
+    }
+
+    private static func stableId(_ parts: [String]) -> String {
+        let digest = SHA256.hash(data: Data(parts.joined(separator: "\u{1F}").utf8))
+        return "path-" + digest.prefix(16).map { String(format: "%02x", $0) }.joined()
     }
 
     /// Safari stores its built-in folders under internal names; show what the Safari UI shows.

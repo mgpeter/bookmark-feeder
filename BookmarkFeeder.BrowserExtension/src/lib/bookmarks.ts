@@ -43,6 +43,10 @@ async function nativeTree(): Promise<Node[]> {
   }
   if (!reply) throw new BookmarksAccessError('native-unavailable', 'No reply from the BookmarkFeeder app.')
   if ('error' in reply) throw new BookmarksAccessError(reply.error, reply.message ?? reply.error)
+  // Checked rather than trusted: a malformed reply would otherwise surface as a raw TypeError.
+  if (!reply.tree || typeof reply.tree !== 'object' || !Array.isArray(reply.tree.children)) {
+    throw new BookmarksAccessError('unreadable', 'The BookmarkFeeder app sent an unexpected reply.')
+  }
   return [reply.tree]
 }
 

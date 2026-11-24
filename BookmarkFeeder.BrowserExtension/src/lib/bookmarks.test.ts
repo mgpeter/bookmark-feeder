@@ -161,6 +161,15 @@ describe('Safari (native bookmarks via the wrapper app)', () => {
     expect(send).toHaveBeenCalledTimes(1)
   })
 
+  it.each([{}, { tree: null }, { tree: { id: 'root' } }])(
+    'reports a malformed native reply (%j) as unreadable',
+    async (reply) => {
+      installSafariStub(reply)
+
+      await expect(listFolders()).rejects.toMatchObject({ code: 'unreadable' })
+    },
+  )
+
   it('surfaces a missing Full Disk Access grant as a typed error', async () => {
     installSafariStub({ error: 'no-access', message: 'macOS blocked access.' })
 
