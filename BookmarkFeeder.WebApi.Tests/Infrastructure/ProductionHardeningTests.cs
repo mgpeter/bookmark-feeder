@@ -126,4 +126,16 @@ public class ProductionHardeningTests(BookmarkApiFactory factory) : IClassFixtur
 
         ((int)response.StatusCode).Should().BeLessThan(300);
     }
+
+    [Fact]
+    public async Task TheOpenApiDocument_IsServedInDevelopment()
+    {
+        // Guards the pinned Microsoft.OpenApi (above the vulnerable 2.0.0 that
+        // Microsoft.AspNetCore.OpenApi brings): a mismatched pair fails here, not at runtime.
+        var response = await factory.CreateClient().GetAsync("/openapi/v1.json");
+
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        var body = await response.Content.ReadAsStringAsync();
+        body.Should().Contain("\"openapi\"").And.Contain("/api/bookmarks");
+    }
 }
