@@ -11,6 +11,7 @@ import {
 } from '@/api/categories'
 import { ApiError } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
+import { QueryError } from '@/components/query-error'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -74,6 +75,12 @@ export function CategoriesPage() {
               <Skeleton key={i} className="h-9 w-full" />
             ))}
           </div>
+        ) : categories.isError && !categories.data ? (
+          <QueryError
+            what="categories"
+            error={categories.error}
+            onRetry={() => void categories.refetch()}
+          />
         ) : categories.data && categories.data.length > 0 ? (
           <CategoryNodes
             nodes={categories.data}

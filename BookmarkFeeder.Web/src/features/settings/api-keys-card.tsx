@@ -2,6 +2,17 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Check, Copy, KeyRound, Loader2 } from 'lucide-react'
 import { useApiKeys, useCreateApiKey, useRevokeApiKey } from '@/api/api-keys'
+import { QueryError } from '@/components/query-error'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { relativeDate } from '@/lib/format'
-import type { CreatedApiKey } from '@/types/models'
+import type { ApiKey, CreatedApiKey } from '@/types/models'
 
 const EXPIRY_OPTIONS = [
   { value: 'never', label: 'Never expires', days: null },
@@ -36,7 +47,7 @@ const EXPIRY_OPTIONS = [
  * because it is the one copy that will ever exist.
  */
 export function ApiKeysCard() {
-  const { data: keys, isLoading } = useApiKeys()
+  const { data: keys, isLoading, isError, error, refetch } = useApiKeys()
   const create = useCreateApiKey()
   const revoke = useRevokeApiKey()
 
@@ -44,6 +55,7 @@ export function ApiKeysCard() {
   const [expiry, setExpiry] = useState('never')
   const [minted, setMinted] = useState<CreatedApiKey | null>(null)
   const [copied, setCopied] = useState(false)
+  const [confirmRevoke, setConfirmRevoke] = useState<ApiKey | null>(null)
 
   async function mint() {
     const days = EXPIRY_OPTIONS.find((o) => o.value === expiry)?.days ?? null
@@ -54,6 +66,17 @@ export function ApiKeysCard() {
       setName('')
     } catch {
       toast.error('Could not create the key')
+    }
+  }
+
+  async function revokeKey(key: ApiKey) {
+    setConfirmRevoke(null)
+    try {
+      await revoke.mutateAsync(key.id)
+      toast.success(`Revoked "${key.name}"`)
+    } catch (e) {
+      const reason = e instanceof Error ? `: ${e.message}` : ''
+      toast.error(`Could not revoke "${key.name}"${reason}`)
     }
   }
 
@@ -137,6 +160,13 @@ export function ApiKeysCard() {
 
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Loading keys…</p>
+        ) : isError && !keys ? (
+          <QueryError
+            what="your API keys"
+            error={error}
+            onRetry={() => void refetch()}
+            className="rounded-md border"
+          />
         ) : active.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No keys yet. Create one to connect the browser extension.
@@ -159,10 +189,8 @@ export function ApiKeysCard() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={async () => {
-                    await revoke.mutateAsync(key.id)
-                    toast.success(`Revoked "${key.name}"`)
-                  }}
+                  disabled={revoke.isPending && revoke.variables === key.id}
+                  onClick={() => setConfirmRevoke(key)}
                 >
                   Revoke
                 </Button>
@@ -188,6 +216,27 @@ export function ApiKeysCard() {
           </details>
         )}
       </CardContent>
+
+      <AlertDialog
+        open={confirmRevoke !== null}
+        onOpenChange={(o) => !o && setConfirmRevoke(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke key?</AlertDialogTitle>
+            <AlertDialogDescription>
+              “{confirmRevoke?.name}” will stop working immediately, and the browser using it will
+              no longer be able to sync until you give it a new key. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmRevoke && void revokeKey(confirmRevoke)}>
+              Revoke
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

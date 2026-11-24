@@ -4,6 +4,7 @@ import { useBookmarks } from '@/api/bookmarks'
 import { useTags } from '@/api/tags'
 import { useCategories, flattenCategories } from '@/api/categories'
 import { FaviconAvatar } from '@/components/favicon-avatar'
+import { QueryError } from '@/components/query-error'
 import { TagChip } from '@/components/tag-chip'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -31,10 +32,10 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Bookmarks" value={all.data?.pagination.totalItems} loading={all.isLoading} icon={Bookmark} />
-        <StatCard label="Unread" value={unread.data?.pagination.totalItems} loading={unread.isLoading} icon={BookOpen} />
-        <StatCard label="Tags" value={tags.data?.length} loading={tags.isLoading} icon={Tags} />
-        <StatCard label="Categories" value={categoryCount} loading={categories.isLoading} icon={FolderTree} />
+        <StatCard label="Bookmarks" value={all.data?.pagination.totalItems} query={all} icon={Bookmark} />
+        <StatCard label="Unread" value={unread.data?.pagination.totalItems} query={unread} icon={BookOpen} />
+        <StatCard label="Tags" value={tags.data?.length} query={tags} icon={Tags} />
+        <StatCard label="Categories" value={categoryCount} query={categories} icon={FolderTree} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -45,6 +46,12 @@ export function DashboardPage() {
           <CardContent className="space-y-1">
             {recent.isLoading ? (
               Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)
+            ) : recent.isError && !recent.data ? (
+              <QueryError
+                what="recent bookmarks"
+                error={recent.error}
+                onRetry={() => void recent.refetch()}
+              />
             ) : recent.data && recent.data.data.length > 0 ? (
               recent.data.data.map((b) => (
                 <a
@@ -77,6 +84,8 @@ export function DashboardPage() {
           <CardContent>
             {tags.isLoading ? (
               <Skeleton className="h-24 w-full" />
+            ) : tags.isError && !tags.data ? (
+              <QueryError what="tags" error={tags.error} onRetry={() => void tags.refetch()} />
             ) : topTags.length > 0 ? (
               <div className="flex flex-wrap gap-1.5">
                 {topTags.map((t) => (
@@ -98,14 +107,16 @@ export function DashboardPage() {
 function StatCard({
   label,
   value,
-  loading,
+  query,
   icon: Icon,
 }: {
   label: string
   value: number | undefined
-  loading: boolean
+  query: { isLoading: boolean; isError: boolean; refetch: () => unknown }
   icon: React.ComponentType<{ className?: string }>
 }) {
+  // A failed count must not read as zero: "0 bookmarks" is something a user might believe.
+  const failed = query.isError && value === undefined
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -113,8 +124,22 @@ function StatCard({
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        {loading ? (
+        {query.isLoading ? (
           <Skeleton className="h-8 w-16" />
+        ) : failed ? (
+          <div className="flex items-center gap-2">
+            <span className="text-3xl font-semibold text-muted-foreground" aria-hidden>
+              –
+            </span>
+            <button
+              type="button"
+              aria-label={`Could not load ${label.toLowerCase()}. Retry`}
+              onClick={() => void query.refetch()}
+              className="text-xs text-destructive underline-offset-2 hover:underline"
+            >
+              Failed — retry
+            </button>
+          </div>
         ) : (
           <div className="text-3xl font-semibold">{value ?? 0}</div>
         )}

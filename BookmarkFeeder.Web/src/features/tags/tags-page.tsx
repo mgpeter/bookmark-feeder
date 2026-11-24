@@ -5,6 +5,7 @@ import type { Tag } from '@/types/models'
 import { useCreateTag, useDeleteTag, useTags, useUpdateTag } from '@/api/tags'
 import { ApiError } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
+import { QueryError } from '@/components/query-error'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -56,7 +57,9 @@ export function TagsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Tags</h1>
-          <p className="text-muted-foreground">{tags.data?.length ?? 0} tags</p>
+          <p className="text-muted-foreground">
+            {tags.data ? `${tags.data.length} tags` : tags.isError ? '—' : 'Loading…'}
+          </p>
         </div>
         <Button onClick={() => setDialog({ mode: 'new' })}>
           <Plus className="mr-1 h-4 w-4" />
@@ -71,6 +74,8 @@ export function TagsPage() {
               <Skeleton key={i} className="h-8 w-full" />
             ))}
           </div>
+        ) : tags.isError && !tags.data ? (
+          <QueryError what="tags" error={tags.error} onRetry={() => void tags.refetch()} />
         ) : tags.data && tags.data.length > 0 ? (
           <Table>
             <TableHeader>
