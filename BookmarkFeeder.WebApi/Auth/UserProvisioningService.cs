@@ -4,6 +4,7 @@ using BookmarkFeeder.WebApi.Data.Configurations;
 using BookmarkFeeder.WebApi.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace BookmarkFeeder.WebApi.Auth;
@@ -22,6 +23,7 @@ public sealed class UserProvisioningService(
     IMemoryCache cache,
     IOptions<Auth0Options> options,
     TimeProvider timeProvider,
+    IHostEnvironment environment,
     ILogger<UserProvisioningService> logger) : IUserProvisioningService
 {
     /// <summary>
@@ -95,12 +97,22 @@ public sealed class UserProvisioningService(
                 ?? email;
             var now = timeProvider.GetUtcNow().UtcDateTime;
 
-            // Claim the migration placeholder if it is still unclaimed, so the collection that
-            // existed before multi-user lands with the first person to sign in rather than being
-            // orphaned. Exactly one login can win: the row is read and updated inside this gate,
-            // and the next caller sees a non-null Auth0Sub and falls through to a normal insert.
+            // Claim the migration placeholder if it is still unclaimed AND this identity is the
+            // configured legacy owner, so the collection that existed before multi-user lands with
+            // its owner rather than being orphaned - or taken by whoever signs in first, which with
+            // open signup could be anyone. Exactly one login can win: the row is read and updated
+            // inside this gate, and the next caller sees a non-null Auth0Sub.
             var placeholder = await context.Users.FirstOrDefaultAsync(
                 u => u.Id == UserConfiguration.PlaceholderUserId && u.Auth0Sub == null, ct);
+
+            if (placeholder is not null && !MayClaimLegacyCollection(sub, email))
+            {
+                logger.LogWarning(
+                    "{Sub} signed in while the pre-multi-user collection is unclaimed; it was not " +
+                    "given to them. Set Auth0__LegacyOwner to the owner's subject or email to hand it over.",
+                    sub);
+                placeholder = null;
+            }
 
             if (placeholder is not null)
             {
@@ -154,6 +166,20 @@ public sealed class UserProvisioningService(
     /// Bookkeeping, throttled hard. Without the throttle this would be a database write on every
     /// authenticated request for a value nobody reads more than once a session.
     /// </summary>
+    private bool MayClaimLegacyCollection(string sub, string? email)
+    {
+        var owner = options.Value.LegacyOwner?.Trim();
+        if (string.IsNullOrEmpty(owner))
+        {
+            // Development seeds demo data into the placeholder for whoever runs the app locally.
+            return environment.IsDevelopment();
+        }
+
+        // Access tokens rarely carry email, so the subject is the dependable match.
+        return string.Equals(owner, sub, StringComparison.Ordinal) ||
+               (email is not null && string.Equals(owner, email, StringComparison.OrdinalIgnoreCase));
+    }
+
     private async Task TouchLastSeenIfStaleAsync(string cacheKey, CacheEntry entry, CancellationToken ct)
     {
         var now = timeProvider.GetUtcNow();

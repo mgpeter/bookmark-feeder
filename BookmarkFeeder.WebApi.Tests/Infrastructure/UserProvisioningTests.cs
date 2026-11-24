@@ -133,4 +133,59 @@ public class UserProvisioningTests
         await using var db = factory.CreateContext();
         (await db.Users.CountAsync()).Should().Be(2);
     }
+
+    private static async Task SeedUnclaimedCollectionAsync(BookmarkApiFactory factory)
+    {
+        await using var seed = factory.CreateContext(UserConfiguration.PlaceholderUserId);
+        seed.Users.Add(new User
+        {
+            Id = UserConfiguration.PlaceholderUserId,
+            Auth0Sub = null,
+            CreatedAt = DateTime.UtcNow,
+        });
+        seed.Bookmarks.Add(new Bookmark
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = UserConfiguration.PlaceholderUserId,
+            Url = "https://legacy.test/",
+            Title = "Legacy",
+            DateAdded = DateTime.UtcNow,
+            DateModified = DateTime.UtcNow,
+        });
+        await seed.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task WithALegacyOwnerConfigured_AStrangerSigningInFirst_DoesNotGetTheCollection()
+    {
+        using var factory = new BookmarkApiFactory();
+        factory.Settings["Auth0:LegacyOwner"] = "auth0|the-operator";
+        await SeedUnclaimedCollectionAsync(factory);
+
+        var stranger = factory.CreateAuthenticatedClient("auth0|someone-else");
+        var body = await stranger.GetStringAsync("/api/bookmarks?pageSize=100");
+
+        // Signup is open: being first must not be enough to take everything.
+        body.Should().NotContain("legacy.test");
+        await using var db = factory.CreateContext();
+        (await db.Users.SingleAsync(u => u.Id == UserConfiguration.PlaceholderUserId))
+            .Auth0Sub.Should().BeNull("the collection waits for its configured owner");
+
+        // ...and the owner still gets it afterwards.
+        var owner = factory.CreateAuthenticatedClient("auth0|the-operator");
+        (await owner.GetStringAsync("/api/bookmarks?pageSize=100")).Should().Contain("legacy.test");
+    }
+
+    [Fact]
+    public async Task TheLegacyOwner_CanBeMatchedByEmail()
+    {
+        using var factory = new BookmarkApiFactory();
+        // Test tokens derive email from the subject: auth0|the-owner -> auth0-the-owner@example.test
+        factory.Settings["Auth0:LegacyOwner"] = "AUTH0-the-owner@example.test";
+        await SeedUnclaimedCollectionAsync(factory);
+
+        var owner = factory.CreateAuthenticatedClient("auth0|the-owner");
+
+        (await owner.GetStringAsync("/api/bookmarks?pageSize=100")).Should().Contain("legacy.test");
+    }
 }

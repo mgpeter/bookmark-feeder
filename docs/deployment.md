@@ -240,8 +240,12 @@ URLs**, **Allowed Logout URLs** and **Allowed Web Origins**.
 
 ### 9. Sign in
 
-Open `https://<machine>.<tailnet>.ts.net` and create an account. The first account to sign in
-**inherits any bookmarks that were already there**, so sign in yourself before sharing the URL.
+Open `https://<machine>.<tailnet>.ts.net` and create an account.
+
+**Upgrading from a version without accounts?** The bookmarks that were already there go only to
+the identity named in `AUTH0_LEGACY_OWNER` (your Auth0 subject or email) - never simply to whoever
+signs in first, since signup is open. Set it in `.env`, restart `webapi`, then sign in. Until it is
+set, the old collection stays parked and the API logs a warning at each new sign-in.
 
 Then, for each browser you want to sync from:
 

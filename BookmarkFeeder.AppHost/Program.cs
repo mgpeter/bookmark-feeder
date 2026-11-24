@@ -124,6 +124,9 @@ var apiService = builder.AddProject<Projects.BookmarkFeeder_WebApi>("webapi")
         service.Restart = "unless-stopped";
         // Wait for Postgres to accept connections, not merely to exist.
         service.DependsOn["postgres"] = new ServiceDependency { Condition = "service_healthy" };
+        // Optional, so a plain compose variable rather than a parameter (which would be required):
+        // who may claim the pre-multi-user collection. Unset leaves it unclaimed.
+        service.Environment["Auth0__LegacyOwner"] = "${AUTH0_LEGACY_OWNER:-}";
     });
 
 // React (Vite) web frontend. Standalone npm app; Aspire runs `npm run dev` and injects PORT.

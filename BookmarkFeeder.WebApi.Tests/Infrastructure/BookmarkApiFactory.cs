@@ -28,6 +28,9 @@ public class BookmarkApiFactory : WebApplicationFactory<Program>
 
     private readonly string _databaseName = $"bookmarkfeeder-tests-{Guid.NewGuid()}";
 
+    /// <summary>Extra configuration for one test; set before the first client or context.</summary>
+    public Dictionary<string, string?> Settings { get; } = [];
+
     public BookmarkApiFactory()
     {
         // Skip the startup MigrateAsync/seed path (InMemory is not relational) and the fail-fast.
@@ -52,6 +55,8 @@ public class BookmarkApiFactory : WebApplicationFactory<Program>
         // No background favicon fetching in tests — it would make real HTTP requests to the
         // seeded bookmarks' sites. The worker is tested directly in FaviconBackgroundServiceTests.
         builder.UseSetting("Favicon:Enabled", "false");
+
+        foreach (var (key, value) in Settings) builder.UseSetting(key, value);
 
         builder.ConfigureServices(services =>
         {

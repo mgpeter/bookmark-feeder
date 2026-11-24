@@ -24,6 +24,15 @@ public sealed class Auth0Options
     public int LastSeenThrottleMinutes { get; set; } = 60;
 
     /// <summary>
+    /// Who may claim the collection that existed before multi-user (the migration placeholder):
+    /// an Auth0 subject (<c>auth0|...</c>, <c>google-oauth2|...</c>) or an email address. Signup is
+    /// open, so without this the first identity to sign in after an upgrade - anyone's - would take
+    /// every bookmark. Unset means the collection stays unclaimed (Development excepted, where the
+    /// seeded demo data goes to the first developer who signs in).
+    /// </summary>
+    public string? LegacyOwner { get; set; }
+
+    /// <summary>
     /// The OIDC issuer. Auth0 always issues with a scheme AND a trailing slash; omitting either
     /// makes every token fail issuer validation with a message that does not say why.
     /// </summary>

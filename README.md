@@ -93,8 +93,9 @@ tailscale serve --bg --https=443 http://127.0.0.1:8081
 tailscale serve status                 # prints your https://<machine>.<tailnet>.ts.net URL
 ```
 
-Open that `ts.net` URL and create an account. The first account to sign in inherits any
-bookmarks that were already there.
+Open that `ts.net` URL and create an account. Upgrading an install from before accounts existed?
+Set `AUTH0_LEGACY_OWNER` first, so the existing bookmarks go to you and not to whoever signs in
+first (see [deployment](docs/deployment.md)).
 
 What you should know:
 

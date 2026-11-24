@@ -55,6 +55,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "webapi"
+      Auth0__LegacyOwner: "${AUTH0_LEGACY_OWNER:-}"
     expose:
       - "${WEBAPI_PORT}"
     depends_on:
