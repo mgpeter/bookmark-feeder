@@ -7,7 +7,7 @@ there's a button to open it.
 
 ## What it does
 
-- Pick which bookmark folders to sync; the selection persists via `chrome.storage.sync`.
+- Pick which bookmark folders to sync; the selection persists in `chrome.storage.local`.
 - **Sync Now** walks the chosen folders recursively, preserves each bookmark's folder path as
   `sourceFolder`, and uploads everything in **one** batch request.
 - Duplicates are skipped server-side by URL, so re-syncing is safe and two browsers can feed one
@@ -81,8 +81,8 @@ after a rebuild, remove BookmarkFeeder from the list and add it again. Signing w
 (Xcode → target → Signing & Capabilities → Team: your Personal Team) keeps the grant stable.
 
 After a code change: `npm run safari:build`, then toggle the extension off and on in Safari's
-settings. Settings live in Safari's own `storage.sync`, so configure it once like any other
-browser. Signing, notarisation and the App Store are not set up yet - and the App Store would not
+settings. Settings live in Safari's own local extension storage, so configure it once like any
+other browser. Signing, notarisation and the App Store are not set up yet - and the App Store would not
 accept the read-only file exception the native handler relies on.
 
 ## Configure it
@@ -105,8 +105,11 @@ browser profile cannot damage your collection.
 **Test connection** verifies both, then pick folders and hit **Sync Now**. The **Dashboard** button
 opens the web app, derived from the server URL by dropping the trailing `/api`.
 
-Settings live in `chrome.storage.sync`, which is **per browser profile** - each browser you install
-into needs configuring once.
+Settings live in `chrome.storage.local`: **this browser profile on this device only.** They are
+deliberately not in `storage.sync`, which Chrome copies to every device on the same Google account -
+that would share one API key between machines (so revoking it breaks them all) and carry folder
+ids that mean different folders on another device. Each browser you install into needs configuring
+once. Extension versions before 1.0.1 kept them in sync storage; the first popup open moves them over.
 
 The extension never talks to Auth0, which is deliberate: an MV3 popup doing OAuth would need a
 pinned extension id, a second Auth0 application and refresh-token handling, and would end up with

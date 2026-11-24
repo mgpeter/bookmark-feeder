@@ -35,7 +35,7 @@ export function FolderPicker({ selected, onChange }: FolderPickerProps) {
     try {
       await onChange({ selectedFolders: next })
     } catch {
-      // chrome.storage.sync has a per-item quota; a huge selection can be rejected.
+      // Extension storage has quotas; a huge selection can be rejected.
       toast.error('Could not save the folder selection.')
     }
   }

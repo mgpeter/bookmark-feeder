@@ -1,10 +1,13 @@
 import { vi } from 'vitest'
+import { resetMigrationForTests } from '@/lib/settings'
 
 type Node = chrome.bookmarks.BookmarkTreeNode
 
 interface ChromeStubOptions {
-  /** Initial contents of `chrome.storage.sync`. */
+  /** Initial contents of `chrome.storage.local`, where settings live. */
   storage?: Record<string, unknown>
+  /** Initial contents of `chrome.storage.sync`, where older versions kept settings. */
+  syncStorage?: Record<string, unknown>
   /** The tree returned by `chrome.bookmarks.getTree` (root node first). */
   tree?: Node[]
 }
@@ -22,22 +25,33 @@ function findNode(id: string, nodes: Node[]): Node | undefined {
  * Installs an in-memory `chrome` global covering the APIs the sync modules use.
  * Returns the stub (for call assertions) and the live storage object.
  */
-export function installChromeStub({ storage = {}, tree = [] }: ChromeStubOptions = {}) {
+function storageArea(store: Record<string, unknown>) {
+  return {
+    // Mirrors chrome's contract: only keys that exist are returned.
+    get: vi.fn(async (keys: string[]) =>
+      Object.fromEntries(keys.filter((key) => key in store).map((key) => [key, store[key]])),
+    ),
+    set: vi.fn(async (items: Record<string, unknown>) => {
+      Object.assign(store, items)
+    }),
+    remove: vi.fn(async (keys: string[]) => {
+      for (const key of keys) delete store[key]
+    }),
+  }
+}
+
+export function installChromeStub({
+  storage = {},
+  syncStorage = {},
+  tree = [],
+}: ChromeStubOptions = {}) {
   const store: Record<string, unknown> = structuredClone(storage)
+  const syncStore: Record<string, unknown> = structuredClone(syncStorage)
 
   const stub = {
     storage: {
-      sync: {
-        // Mirrors chrome's contract: only keys that exist are returned.
-        get: vi.fn(async (keys: string[]) =>
-          Object.fromEntries(
-            keys.filter((key) => key in store).map((key) => [key, store[key]]),
-          ),
-        ),
-        set: vi.fn(async (items: Record<string, unknown>) => {
-          Object.assign(store, items)
-        }),
-      },
+      local: storageArea(store),
+      sync: storageArea(syncStore),
     },
     bookmarks: {
       getTree: vi.fn(async () => tree),
@@ -54,7 +68,9 @@ export function installChromeStub({ storage = {}, tree = [] }: ChromeStubOptions
   }
 
   vi.stubGlobal('chrome', stub)
-  return { stub, store }
+  // Each test starts from a fresh "page load", so the one-time migration runs again.
+  resetMigrationForTests()
+  return { stub, store, syncStore }
 }
 
 /** A small but realistic bookmark tree: root → Bookmarks Bar → Dev → React. */

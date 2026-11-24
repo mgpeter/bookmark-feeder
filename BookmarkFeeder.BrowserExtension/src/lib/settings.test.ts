@@ -32,11 +32,39 @@ describe('settings', () => {
     expect(settings.lastSync).toBeNull()
   })
 
-  it('persists a partial patch to chrome.storage.sync', async () => {
+  it('persists a partial patch to chrome.storage.local', async () => {
     const { store } = installChromeStub({ storage: { apiKey: 'keep-me' } })
 
     await saveSettings({ serverUrl: 'http://localhost:5180/api' })
 
     expect(store).toEqual({ apiKey: 'keep-me', serverUrl: 'http://localhost:5180/api' })
+  })
+
+  it('moves settings out of chrome.storage.sync once, keeping local values', async () => {
+    const { store, syncStore } = installChromeStub({
+      storage: { serverUrl: 'https://local.example/api' },
+      syncStorage: {
+        serverUrl: 'https://synced.example/api',
+        apiKey: 'synced-key',
+        selectedFolders: [{ id: '2', title: 'Dev', depth: 2 }],
+      },
+    })
+
+    const settings = await getSettings()
+
+    expect(settings.serverUrl).toBe('https://local.example/api')
+    expect(settings.apiKey).toBe('synced-key')
+    expect(store.selectedFolders).toEqual([{ id: '2', title: 'Dev', depth: 2 }])
+    // Gone from sync, so the key stops travelling to the account's other devices.
+    expect(syncStore).toEqual({})
+  })
+
+  it('migrates before a write, so a save cannot be shadowed by stale synced values', async () => {
+    const { store, syncStore } = installChromeStub({ syncStorage: { apiKey: 'old' } })
+
+    await saveSettings({ apiKey: 'new' })
+
+    expect(store.apiKey).toBe('new')
+    expect(syncStore).toEqual({})
   })
 })

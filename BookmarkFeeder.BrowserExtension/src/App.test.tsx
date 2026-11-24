@@ -39,7 +39,7 @@ describe('App', () => {
     await user.click(await screen.findByRole('checkbox', { name: 'React' }))
 
     await waitFor(() =>
-      expect(stub.storage.sync.set).toHaveBeenCalledWith({
+      expect(stub.storage.local.set).toHaveBeenCalledWith({
         selectedFolders: [
           { id: '2', title: 'Dev', depth: 2 },
           { id: '3', title: 'React', depth: 3 },
@@ -57,7 +57,7 @@ describe('App', () => {
     await user.click(await screen.findByRole('checkbox', { name: 'Dev' }))
 
     await waitFor(() =>
-      expect(stub.storage.sync.set).toHaveBeenCalledWith({ selectedFolders: [] }),
+      expect(stub.storage.local.set).toHaveBeenCalledWith({ selectedFolders: [] }),
     )
   })
 
@@ -115,7 +115,7 @@ describe('App', () => {
     await user.click(save)
 
     expect(await screen.findByText(/enter your server url/i)).toBeInTheDocument()
-    expect(stub.storage.sync.set).not.toHaveBeenCalled()
+    expect(stub.storage.local.set).not.toHaveBeenCalled()
   })
 
   it('saves settings and rejects a malformed server URL', async () => {
@@ -128,7 +128,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /^save$/i }))
 
     expect(await screen.findByText(/valid url/i)).toBeInTheDocument()
-    expect(stub.storage.sync.set).not.toHaveBeenCalled()
+    expect(stub.storage.local.set).not.toHaveBeenCalled()
 
     await user.clear(urlInput)
     await user.type(urlInput, 'http://localhost:5180/api')
@@ -136,7 +136,7 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /^save$/i }))
 
     await waitFor(() =>
-      expect(stub.storage.sync.set).toHaveBeenCalledWith({
+      expect(stub.storage.local.set).toHaveBeenCalledWith({
         serverUrl: 'http://localhost:5180/api',
         apiKey: 'k',
       }),
