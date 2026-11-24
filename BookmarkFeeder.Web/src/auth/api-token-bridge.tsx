@@ -1,6 +1,7 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useAuth0 } from '@auth0/auth0-react'
 import { setTokenGetter, setUnauthorizedHandler } from '@/lib/api-client'
+import { claimAuthRedirect, clearAuthRedirects } from '@/lib/auth-redirect-guard'
 import { AuthSplash } from './auth-splash'
 import { AuthErrorScreen } from './auth-error-screen'
 
@@ -26,6 +27,8 @@ export function ApiTokenBridge({ children }: { children: ReactNode }) {
   // Auth0 revokes the whole token family, signing the user out for no visible reason.
   const inFlight = useRef<Promise<string | null> | null>(null)
   const redirecting = useRef(false)
+  // Set when a sign-in round trip has already failed to fix a 401 (see auth-redirect-guard).
+  const [rejected, setRejected] = useState(false)
 
   useEffect(() => {
     setTokenGetter(async () => {
@@ -48,6 +51,12 @@ export function ApiTokenBridge({ children }: { children: ReactNode }) {
     setUnauthorizedHandler(() => {
       // N parallel 401s must not queue N redirects.
       if (redirecting.current) return
+      // Auth0 has a session but the API still refuses its tokens: another redirect would come
+      // straight back and loop forever. Stop and say so instead.
+      if (!claimAuthRedirect()) {
+        setRejected(true)
+        return
+      }
       redirecting.current = true
 
       void loginWithRedirect({
@@ -58,12 +67,34 @@ export function ApiTokenBridge({ children }: { children: ReactNode }) {
 
   if (isLoading) return <AuthSplash />
 
+  const signOut = () => {
+    clearAuthRedirects()
+    void logout({ logoutParams: { returnTo: window.location.origin } })
+  }
+
+  if (rejected) {
+    return (
+      <AuthErrorScreen
+        message="You signed in, but the server still rejected the session. This usually means the web app and the API are configured with different Auth0 audiences, or the server's clock is wrong. Check the deployment settings, then try again."
+        onRetry={() => {
+          clearAuthRedirects()
+          setRejected(false)
+          redirecting.current = true
+          void loginWithRedirect({
+            appState: { returnTo: window.location.pathname + window.location.search },
+          })
+        }}
+        onSignOut={signOut}
+      />
+    )
+  }
+
   if (error) {
     return (
       <AuthErrorScreen
         message={error.message}
         onRetry={() => void loginWithRedirect()}
-        onSignOut={() => void logout({ logoutParams: { returnTo: window.location.origin } })}
+        onSignOut={signOut}
       />
     )
   }

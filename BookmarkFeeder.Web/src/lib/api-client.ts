@@ -1,3 +1,5 @@
+import { clearAuthRedirects } from './auth-redirect-guard'
+
 export class ApiError extends Error {
   status: number
   body?: unknown
@@ -86,6 +88,9 @@ async function request<T>(
     }
     throw new ApiError(res.status, message, parsed)
   }
+
+  // The token worked, so any earlier sign-in redirect did its job.
+  clearAuthRedirects()
 
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
