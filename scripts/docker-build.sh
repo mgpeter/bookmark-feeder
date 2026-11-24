@@ -66,6 +66,11 @@ echo "Building BookmarkFeeder $version (linux/amd64)"
 # --- webapi + gateway: .NET SDK container publish --------------------------------------------
 # NOTE: -t:PublishContainer, never /t:. Git Bash rewrites /t:... into a Windows path and MSBuild
 # then reports the baffling "MSB1008: Only one project can be specified".
+#
+# OpenApiGenerateDocuments=false: Microsoft.Extensions.ApiDescription.Server generates an OpenAPI
+# file at build time by LOADING the just-built assembly. Built for linux-x64 on a Mac (or any host
+# that is not linux-x64) that load fails - "Could not load file or assembly BookmarkFeeder.WebApi" -
+# and the publish dies. Nothing uses the build-time file; the API serves its document at runtime.
 build_dotnet_image() {
   local name="$1" project="$2"
   local repository="$NAMESPACE/bookmarkfeeder-$name"
@@ -74,6 +79,7 @@ build_dotnet_image() {
     -c Release --os linux --arch x64 -t:PublishContainer \
     -p:ContainerRepository="$repository" \
     -p:ContainerImageTag="$version" \
+    -p:OpenApiGenerateDocuments=false \
     --nologo -v quiet
 }
 

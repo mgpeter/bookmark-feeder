@@ -70,6 +70,7 @@ foreach ($image in $dotnetImages) {
         -c Release --os linux --arch x64 -t:PublishContainer `
         -p:ContainerRepository=$repository `
         -p:ContainerImageTag=$Version `
+        -p:OpenApiGenerateDocuments=false `
         --nologo -v quiet
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed for $($image.Name)" }
 }
