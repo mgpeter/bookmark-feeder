@@ -43,8 +43,9 @@ const EXPIRY_OPTIONS = [
 /**
  * Mint, list and revoke the keys the browser extension authenticates with.
  *
- * The freshly minted key is held in local component state and never written to the query cache,
- * because it is the one copy that will ever exist.
+ * The freshly minted key is held in local component state only, because it is the one copy that
+ * will ever exist: never in the query cache, and the mutation is reset as soon as the key has been
+ * copied out of it, so the MutationCache does not keep it either.
  */
 export function ApiKeysCard() {
   const { data: keys, isLoading, isError, error, refetch } = useApiKeys()
@@ -62,6 +63,7 @@ export function ApiKeysCard() {
     try {
       const created = await create.mutateAsync({ name: name.trim(), expiresInDays: days })
       setMinted(created)
+      create.reset()
       setCopied(false)
       setName('')
     } catch {

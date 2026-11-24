@@ -32,6 +32,7 @@ function setup(fetchMock: ReturnType<typeof vi.fn>) {
       <ApiKeysCard />
     </QueryClientProvider>,
   )
+  return client
 }
 
 const deletes = (fetchMock: ReturnType<typeof vi.fn>) =>
@@ -73,5 +74,30 @@ describe('ApiKeysCard revoke', () => {
     expect(vi.mocked(toast.error).mock.calls[0][0]).toMatch(/could not revoke "Work laptop"/i)
     expect(deletes(fetchMock)).toHaveLength(1)
     expect(toast.success).not.toHaveBeenCalled()
+  })
+})
+
+describe('ApiKeysCard mint', () => {
+  beforeEach(() => vi.restoreAllMocks())
+
+  it('shows the new key but leaves no copy of it in the mutation cache', async () => {
+    const user = userEvent.setup()
+    const plaintext = 'bmf_7Kd9_super-secret-plaintext'
+    const client = setup(
+      vi.fn().mockImplementation(async (_url: string, init: RequestInit) =>
+        init.method === 'POST'
+          ? json({ ...keys[0], id: 'k2', name: 'Home', key: plaintext })
+          : json(keys),
+      ),
+    )
+
+    await user.type(await screen.findByLabelText(/^name$/i), 'Home')
+    await user.click(screen.getByRole('button', { name: /create key/i }))
+
+    expect(await screen.findByDisplayValue(plaintext)).toBeInTheDocument()
+    await waitFor(() => {
+      const cached = client.getMutationCache().getAll().map((m) => m.state.data)
+      expect(JSON.stringify(cached)).not.toContain(plaintext)
+    })
   })
 })

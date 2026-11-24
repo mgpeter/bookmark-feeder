@@ -12,9 +12,12 @@ export function useApiKeys() {
 }
 
 /**
- * Mints a key. The response contains the plaintext exactly once; the caller shows it and forgets
- * it. Note there is no onSuccess cache write of the result - only an invalidate - so the secret
- * never lands in the query cache.
+ * Mints a key. The response contains the plaintext exactly once; the caller copies it into its own
+ * state and must then call reset() so the mutation lets go of it too.
+ *
+ * Nothing writes the result into the query cache (onSuccess only invalidates), but the mutation
+ * itself keeps its data in the MutationCache, and would for the default five-minute gcTime after
+ * the card unmounts. gcTime: 0 drops it as soon as no component observes it.
  */
 export function useCreateApiKey() {
   const qc = useQueryClient()
@@ -22,6 +25,7 @@ export function useCreateApiKey() {
     mutationFn: (body: { name: string; expiresInDays: number | null }) =>
       api.post<CreatedApiKey>('/keys', body),
     onSuccess: () => qc.invalidateQueries({ queryKey: [apiKeysKey] }),
+    gcTime: 0,
   })
 }
 
