@@ -228,4 +228,22 @@ public class BookmarkApiTests(BookmarkApiFactory factory) : IClassFixture<Bookma
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).Should().Contain("at most");
     }
+
+    [Fact]
+    public async Task TagFilter_MatchesATagWhoseNameContainsAComma_WhenEscaped()
+    {
+        using var isolated = new BookmarkApiFactory();
+        var client = isolated.CreateAuthenticatedClient();
+        var url = $"https://comma-{Guid.NewGuid():N}.example.com";
+        (await client.PostAsJsonAsync("/api/bookmarks",
+            new CreateBookmarkRequest(url, "Comma", null, null, null, null, ["a,b"])))
+            .StatusCode.Should().Be(HttpStatusCode.Created);
+
+        // "a\,b" is one tag; plain "a,b" still means the two tags a and b (neither exists).
+        var escaped = await client.GetStringAsync($"/api/bookmarks?tags={Uri.EscapeDataString("a\\,b")}");
+        var plain = await client.GetStringAsync($"/api/bookmarks?tags={Uri.EscapeDataString("a,b")}");
+
+        escaped.Should().Contain(url);
+        plain.Should().NotContain(url);
+    }
 }

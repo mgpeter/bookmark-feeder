@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react'
 import { useTags } from '@/api/tags'
+import { decodeTagList, encodeTagList } from '@/lib/tag-names'
 import { useCategories, flattenCategories } from '@/api/categories'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -60,13 +61,13 @@ export function BookmarkFilters() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query.search])
 
-  const selectedTags = query.tags ? query.tags.split(',') : []
+  const selectedTags = decodeTagList(query.tags)
 
   function toggleTag(name: string) {
     const set = new Set(selectedTags)
     if (set.has(name)) set.delete(name)
     else set.add(name)
-    patch({ tags: set.size ? [...set].join(',') : null })
+    patch({ tags: set.size ? encodeTagList([...set]) : null })
   }
 
   const flatCategories = categories.data ? flattenCategories(categories.data) : []

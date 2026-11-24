@@ -1,8 +1,7 @@
 /**
- * The bookmark list filters by tags as ONE comma-joined URL param (tags=a,b), the same shape the
- * API's `tags` query takes. A tag whose name contains a comma would split into two names that do
- * not exist, so it could never be filtered on. The API accepts such names, so the UI refuses to
- * create them.
+ * Commas separate tags where the UI takes several at once (the bookmark dialog's tag input), so
+ * the UI does not create names containing one. Names that already have one - from the API or an
+ * import - still filter correctly: see encodeTagList.
  */
 export const TAG_NAME_COMMA_MESSAGE =
   'Tag names cannot contain commas: the tag filter uses commas to separate tags.'
@@ -18,4 +17,34 @@ export function splitTagInput(input: string): string[] {
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean)
+}
+
+/**
+ * Encodes tag names for the `tags` filter param. Names are comma-separated, so a comma inside a
+ * name - possible for tags created through the API, or before the UI refused them - is escaped as
+ * `\,` and a backslash as `\\`. The API decodes the same way; plain names encode unchanged, so
+ * existing URLs and saved searches keep working.
+ */
+export function encodeTagList(names: string[]): string {
+  return names.map((n) => n.replace(/\\/g, '\\\\').replace(/,/g, '\\,')).join(',')
+}
+
+/** Inverse of {@link encodeTagList}. */
+export function decodeTagList(value: string | null | undefined): string[] {
+  if (!value) return []
+  const names: string[] = []
+  let current = ''
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i]
+    if (ch === '\\' && i + 1 < value.length) {
+      current += value[++i]
+    } else if (ch === ',') {
+      names.push(current)
+      current = ''
+    } else {
+      current += ch
+    }
+  }
+  names.push(current)
+  return names.map((n) => n.trim()).filter(Boolean)
 }

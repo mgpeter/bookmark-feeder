@@ -11,6 +11,7 @@ import { BookmarkCard } from './bookmark-card'
 import { BookmarkFilters } from './bookmark-filters'
 import { BookmarkEditDialog, type EditTarget } from './bookmark-edit-dialog'
 import { FacetPanel } from './facet-panel'
+import { decodeTagList, encodeTagList } from '@/lib/tag-names'
 import { MarkAllReadDialog } from './mark-all-read-dialog'
 import { SavedSearches } from './saved-searches'
 import { clampedPage, savedSearchString, useBookmarkQuery } from './use-bookmark-query'
@@ -88,13 +89,13 @@ export function BookmarkListPage() {
       {data?.facets && (
         <FacetPanel
           facets={data.facets}
-          selectedTags={query.tags ? query.tags.split(',') : []}
+          selectedTags={decodeTagList(query.tags)}
           selectedCategory={query.categories ?? undefined}
           onToggleTag={(name) => {
-            const selected = new Set(query.tags ? query.tags.split(',') : [])
+            const selected = new Set(decodeTagList(query.tags))
             if (selected.has(name)) selected.delete(name)
             else selected.add(name)
-            patch({ tags: selected.size ? [...selected].join(',') : null })
+            patch({ tags: selected.size ? encodeTagList([...selected]) : null })
           }}
           onSelectCategory={(id) =>
             patch({ categories: query.categories === id ? null : id })

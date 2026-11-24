@@ -12,7 +12,10 @@ public class BookmarkQuery
     /// </summary>
     public string? Search { get; set; }
 
-    /// <summary>Comma-separated tag names; matches bookmarks having ANY of them.</summary>
+    /// <summary>
+    /// Comma-separated tag names; matches bookmarks having ANY of them. A comma inside a name is
+    /// written <c>\,</c> (and a backslash <c>\\</c>).
+    /// </summary>
     public string? Tags { get; set; }
 
     /// <summary>Comma-separated category ids; matches bookmarks in ANY of them.</summary>

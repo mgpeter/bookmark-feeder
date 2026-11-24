@@ -469,7 +469,7 @@ public class BookmarkService(
 
         if (!string.IsNullOrWhiteSpace(query.Tags))
         {
-            var tagNames = SplitCsv(query.Tags).Select(t => t.ToLowerInvariant()).ToList();
+            var tagNames = SplitTagList(query.Tags).Select(t => t.ToLowerInvariant()).ToList();
             if (tagNames.Count > 0)
             {
                 q = q.Where(b => b.BookmarkTags.Any(bt => tagNames.Contains(bt.Tag.NormalizedName)));
@@ -590,6 +590,26 @@ public class BookmarkService(
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Splits the <c>tags</c> filter. Tag names may contain commas (nothing forbids them over the
+    /// API), so <c>\,</c> is a literal comma and <c>\\</c> a literal backslash - the web app encodes
+    /// the same way. Plain comma-separated lists, i.e. every existing URL, parse as before.
+    /// </summary>
+    private static List<string> SplitTagList(string value)
+    {
+        var names = new List<string>();
+        var current = new System.Text.StringBuilder();
+        for (var i = 0; i < value.Length; i++)
+        {
+            var ch = value[i];
+            if (ch == '\\' && i + 1 < value.Length) current.Append(value[++i]);
+            else if (ch == ',') { names.Add(current.ToString()); current.Clear(); }
+            else current.Append(ch);
+        }
+        names.Add(current.ToString());
+        return names.Select(n => n.Trim()).Where(n => n.Length > 0).ToList();
     }
 
     private static IEnumerable<string> SplitCsv(string value) =>
