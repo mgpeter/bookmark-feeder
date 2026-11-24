@@ -143,6 +143,46 @@ describe('App', () => {
     )
   })
 
+  it.each([
+    ['localhost:5180/api', /start the url with https/i],
+    ['http://192.168.1.20:8081/api', /use https/i],
+  ])('rejects the server URL %s', async (value, message) => {
+    const user = userEvent.setup()
+    const { stub } = installChromeStub({ tree: sampleTree() })
+    render(<App />)
+
+    await user.type(await screen.findByLabelText(/server url/i), value)
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    expect(await screen.findByText(message)).toBeInTheDocument()
+    expect(stub.storage.local.set).not.toHaveBeenCalled()
+  })
+
+  it('keeps both folders when two are toggled before the first save finishes', async () => {
+    const user = userEvent.setup()
+    const { stub } = installChromeStub({ tree: sampleTree(), storage: { ...configured, selectedFolders: [] } })
+    // Slow writes, so the second click lands while the first is still in flight.
+    const write = stub.storage.local.set.getMockImplementation()!
+    stub.storage.local.set.mockImplementation(async (items: Record<string, unknown>) => {
+      await new Promise((r) => setTimeout(r, 50))
+      return write(items)
+    })
+    render(<App />)
+
+    await user.click(await screen.findByRole('tab', { name: /folders/i }))
+    await user.click(await screen.findByRole('checkbox', { name: 'Dev' }))
+    await user.click(await screen.findByRole('checkbox', { name: 'React' }))
+
+    await waitFor(() =>
+      expect(stub.storage.local.set).toHaveBeenLastCalledWith({
+        selectedFolders: [
+          { id: '2', title: 'Dev', depth: 2 },
+          { id: '3', title: 'React', depth: 3 },
+        ],
+      }),
+    )
+  })
+
   it('keeps the API key masked', async () => {
     const user = userEvent.setup()
     installChromeStub({ tree: sampleTree(), storage: configured })

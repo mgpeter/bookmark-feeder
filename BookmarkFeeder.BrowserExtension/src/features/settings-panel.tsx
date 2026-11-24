@@ -12,6 +12,10 @@ interface SettingsPanelProps {
 }
 
 /** Server URL + API key, with a connection check against the API. */
+function isLoopback(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
+}
+
 export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
   const [serverUrl, setServerUrl] = useState(settings.serverUrl)
   const [apiKey, setApiKey] = useState(settings.apiKey)
@@ -21,12 +25,21 @@ export function SettingsPanel({ settings, onSave }: SettingsPanelProps) {
   /** Returns the problem with the URL, or null when it's usable. */
   function urlProblem(value: string): string | null {
     if (!value) return 'Enter your server URL, e.g. http://localhost:5180/api'
+    let url: URL
     try {
-      new URL(value)
-      return null
+      url = new URL(value)
     } catch {
       return 'Enter a valid URL, e.g. http://localhost:5180/api'
     }
+    // "localhost:5180/api" parses, as scheme "localhost:" - and then can never be reached.
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return 'Start the URL with https:// (or http:// for a server on this machine).'
+    }
+    // The API key is sent with every request; over plain HTTP anyone on the network can read it.
+    if (url.protocol === 'http:' && !isLoopback(url.hostname)) {
+      return 'Use https:// - over plain http the API key would cross the network unencrypted.'
+    }
+    return null
   }
 
   async function save() {

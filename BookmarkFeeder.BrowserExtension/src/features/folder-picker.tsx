@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -24,13 +24,22 @@ export function FolderPicker({ selected, onChange }: FolderPickerProps) {
       .catch(setLoadError)
   }, [supported])
 
+  // The selection as last requested, not as last saved: `selected` only updates once a storage
+  // write finishes, so two quick clicks both started from the same old list and the second
+  // overwrote the first.
+  const pending = useRef(selected)
+  useEffect(() => {
+    pending.current = selected
+  }, [selected])
+
   async function toggle(folder: BookmarkFolder, checked: boolean) {
-    const ids = new Set(selected.map((f) => f.id))
+    const ids = new Set(pending.current.map((f) => f.id))
     if (checked) ids.add(folder.id)
     else ids.delete(folder.id)
 
     // Rebuild from the folder list so the stored order always follows the tree.
     const next = folders!.filter((f) => ids.has(f.id))
+    pending.current = next
 
     try {
       await onChange({ selectedFolders: next })
