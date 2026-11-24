@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { hostname, origin } from '@/lib/format'
+import { hostname, origin, safeHref } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -16,7 +16,7 @@ export function FaviconAvatar({ url, faviconUrl, className }: Props) {
   const [failed, setFailed] = useState(false)
   const host = hostname(url)
   const letter = (host[0] ?? '?').toUpperCase()
-  const src = faviconUrl || (origin(url) ? `${origin(url)}/favicon.ico` : '')
+  const src = faviconSrc(url, faviconUrl)
 
   if (!src || failed) {
     return (
@@ -41,4 +41,14 @@ export function FaviconAvatar({ url, faviconUrl, className }: Props) {
       className={cn('h-8 w-8 shrink-0 rounded object-contain', className)}
     />
   )
+}
+
+/**
+ * A stored faviconUrl is used as given. Otherwise only an http(s) bookmark is worth asking: a
+ * javascript:, chrome: or file: URL has the opaque origin "null", so deriving /favicon.ico from it
+ * requested "/null/favicon.ico" from this app instead. Those go straight to the monogram.
+ */
+function faviconSrc(url: string, faviconUrl?: string | null): string {
+  if (faviconUrl) return faviconUrl
+  return safeHref(url) ? `${origin(url)}/favicon.ico` : ''
 }
