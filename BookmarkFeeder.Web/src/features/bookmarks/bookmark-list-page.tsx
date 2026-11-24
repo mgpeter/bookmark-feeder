@@ -13,7 +13,7 @@ import { BookmarkEditDialog, type EditTarget } from './bookmark-edit-dialog'
 import { FacetPanel } from './facet-panel'
 import { MarkAllReadDialog } from './mark-all-read-dialog'
 import { SavedSearches } from './saved-searches'
-import { clampedPage, useBookmarkQuery } from './use-bookmark-query'
+import { clampedPage, savedSearchString, useBookmarkQuery } from './use-bookmark-query'
 
 export function BookmarkListPage() {
   const { query, params, patch, view } = useBookmarkQuery()
@@ -67,7 +67,7 @@ export function BookmarkListPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <SavedSearches currentQuery={params.toString()} />
+          <SavedSearches currentQuery={savedSearchString(params, query)} />
           <Button
             variant="outline"
             onClick={() => setConfirmMarkAll(true)}

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { ReactNode } from 'react'
-import { clampedPage, useBookmarkQuery } from './use-bookmark-query'
+import { clampedPage, savedSearchString, useBookmarkQuery } from './use-bookmark-query'
 
 function at(url: string) {
   return {
@@ -53,5 +53,27 @@ describe('clampedPage', () => {
 
   it('does nothing when the result is empty', () => {
     expect(clampedPage(4, 0)).toBeNull()
+  })
+})
+
+describe('savedSearchString', () => {
+  function saved(url: string) {
+    const { result } = renderHook(() => useBookmarkQuery(), at(url))
+    return savedSearchString(result.current.params, result.current.query)
+  }
+
+  it('keeps the filters and sort but drops page and view', () => {
+    expect(saved('/bookmarks?q=graphql&tags=dotnet&page=3&view=list&sort=title')).toBe(
+      'q=graphql&tags=dotnet&sort=title',
+    )
+  })
+
+  it('has nothing to save when only the layout, page or sort is set', () => {
+    expect(saved('/bookmarks?view=list')).toBe('')
+    expect(saved('/bookmarks?page=2&sort=title&dir=asc')).toBe('')
+  })
+
+  it('counts the unread filter as a search', () => {
+    expect(saved('/bookmarks?read=unread&view=list')).toBe('read=unread')
   })
 })

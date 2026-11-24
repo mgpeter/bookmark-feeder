@@ -1,4 +1,5 @@
 import { useSearchParams } from 'react-router-dom'
+import { hasNarrowingFilters } from '@/lib/bookmark-filters'
 import type { BookmarkQuery, SortBy, SortOrder } from '@/types/models'
 
 export type ReadFilter = 'all' | 'read' | 'unread'
@@ -12,6 +13,19 @@ export type ViewMode = 'grid' | 'list'
  */
 export function clampedPage(page: number, totalPages: number): number | null {
   return totalPages >= 1 && page > totalPages ? totalPages : null
+}
+
+/**
+ * The URL params worth storing as a saved search, or '' when there is nothing to save. Where you
+ * were (page) and how it was laid out (view) are not part of a search: applying one should start
+ * at page 1 in whatever layout you are using. And a sort or a layout on its own is not a search.
+ */
+export function savedSearchString(params: URLSearchParams, query: BookmarkQuery): string {
+  if (!hasNarrowingFilters(query)) return ''
+  const saved = new URLSearchParams(params)
+  saved.delete('page')
+  saved.delete('view')
+  return saved.toString()
 }
 
 export function useBookmarkQuery() {
