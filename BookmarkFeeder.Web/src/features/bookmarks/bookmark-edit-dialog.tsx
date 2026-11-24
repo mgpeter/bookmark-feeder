@@ -8,6 +8,7 @@ import type { Bookmark } from '@/types/models'
 import { useCreateBookmark, useUpdateBookmark } from '@/api/bookmarks'
 import { useCategories, flattenCategories } from '@/api/categories'
 import { ApiError } from '@/lib/api-client'
+import { splitTagInput } from '@/lib/tag-names'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -92,8 +93,10 @@ export function BookmarkEditDialog({ target, onClose }: Props) {
   }, [isOpen, editing, reset])
 
   function addTag() {
-    const name = tagInput.trim()
-    if (name && !tags.includes(name)) setTags([...tags, name])
+    // A comma separates tags rather than becoming part of one: the tag filter is a comma-joined
+    // list, so a tag named "a,b" could never be filtered on (see lib/tag-names).
+    const added = splitTagInput(tagInput).filter((name) => !tags.includes(name))
+    if (added.length) setTags([...tags, ...new Set(added)])
     setTagInput('')
   }
 
@@ -214,7 +217,7 @@ export function BookmarkEditDialog({ target, onClose }: Props) {
                 }
               }}
               onBlur={addTag}
-              placeholder="Type a tag and press Enter"
+              placeholder="Type a tag and press Enter; commas separate tags"
             />
           </div>
 

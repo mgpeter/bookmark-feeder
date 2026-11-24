@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import type { Tag } from '@/types/models'
 import { useCreateTag, useDeleteTag, useTags, useUpdateTag } from '@/api/tags'
 import { ApiError } from '@/lib/api-client'
+import { tagNameProblem } from '@/lib/tag-names'
 import { Button } from '@/components/ui/button'
 import { QueryError } from '@/components/query-error'
 import { Card } from '@/components/ui/card'
@@ -168,10 +169,11 @@ function TagFormDialog({ state, onClose }: { state: DialogState; onClose: () => 
 
   // Enter in the name field calls save() directly, so the disabled button alone is not enough.
   const saving = create.isPending || update.isPending
+  const nameProblem = tagNameProblem(name)
 
   function save() {
     const trimmed = name.trim()
-    if (!trimmed || saving) return
+    if (!trimmed || nameProblem || saving) return
     const onError = (e: unknown) =>
       toast.error(
         e instanceof ApiError && e.status === 409
@@ -208,8 +210,15 @@ function TagFormDialog({ state, onClose }: { state: DialogState; onClose: () => 
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && save()}
+              aria-invalid={nameProblem ? true : undefined}
+              aria-describedby={nameProblem ? 'tag-name-error' : undefined}
               autoFocus
             />
+            {nameProblem && (
+              <p id="tag-name-error" className="text-xs text-destructive">
+                {nameProblem}
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="tag-color">Color</Label>
@@ -233,7 +242,7 @@ function TagFormDialog({ state, onClose }: { state: DialogState; onClose: () => 
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save} disabled={!name.trim() || saving}>
+          <Button onClick={save} disabled={!name.trim() || Boolean(nameProblem) || saving}>
             {editing ? 'Save' : 'Create'}
           </Button>
         </DialogFooter>

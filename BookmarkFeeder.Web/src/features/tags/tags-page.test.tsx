@@ -35,4 +35,27 @@ describe('TagsPage', () => {
     expect(posts).toHaveLength(1)
     expect(screen.getByRole('button', { name: /^create$/i })).toBeDisabled()
   })
+
+  it('refuses a tag name with a comma and says why', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response('[]', { status: 200, headers: { 'Content-Type': 'application/json' } }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <TagsPage />
+      </QueryClientProvider>,
+    )
+
+    await user.click(screen.getByRole('button', { name: /new tag/i }))
+    await user.type(screen.getByLabelText(/name/i), 'a,b{Enter}')
+
+    expect(screen.getByText(/cannot contain commas/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^create$/i })).toBeDisabled()
+    const posts = fetchMock.mock.calls.filter(([, init]) => (init as RequestInit).method === 'POST')
+    expect(posts).toHaveLength(0)
+  })
 })
