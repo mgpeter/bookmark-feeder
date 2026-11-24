@@ -114,7 +114,12 @@ public class BookmarkService(
         return bookmark is null ? null : ToDto(bookmark);
     }
 
-    public async Task<(BookmarkDto? Dto, BookmarkError Error)> CreateAsync(CreateBookmarkRequest request, CancellationToken ct = default)
+    public Task<(BookmarkDto? Dto, BookmarkError Error)> CreateAsync(CreateBookmarkRequest request, CancellationToken ct = default) =>
+        // A concurrent create of the same URL or a new tag loses at the unique index; the rerun's
+        // pre-check then reports Duplicate instead of a 500.
+        UniqueViolation.RetryLostRaceAsync(() => CreateCoreAsync(request, ct));
+
+    private async Task<(BookmarkDto? Dto, BookmarkError Error)> CreateCoreAsync(CreateBookmarkRequest request, CancellationToken ct)
     {
         await using var context = await contextFactory.CreateDbContextAsync(ct);
 
@@ -165,7 +170,11 @@ public class BookmarkService(
         return ((await GetByIdAsync(bookmark.Id, ct))!, BookmarkError.None);
     }
 
-    public async Task<(BookmarkDto? Dto, BookmarkError Error)> UpdateAsync(Guid id, UpdateBookmarkRequest request, CancellationToken ct = default)
+    public Task<(BookmarkDto? Dto, BookmarkError Error)> UpdateAsync(Guid id, UpdateBookmarkRequest request, CancellationToken ct = default) =>
+        // New tag names race the same way as on create.
+        UniqueViolation.RetryLostRaceAsync(() => UpdateCoreAsync(id, request, ct));
+
+    private async Task<(BookmarkDto? Dto, BookmarkError Error)> UpdateCoreAsync(Guid id, UpdateBookmarkRequest request, CancellationToken ct)
     {
         await using var context = await contextFactory.CreateDbContextAsync(ct);
         var bookmark = await context.Bookmarks
@@ -237,13 +246,56 @@ public class BookmarkService(
 
     public async Task<BatchResultDto> CreateBatchAsync(BatchCreateRequest request, CancellationToken ct = default)
     {
+        await using var context = await contextFactory.CreateDbContextAsync(ct);
+
+        BatchResultDto result;
+        if (!context.Database.IsNpgsql())
+        {
+            // The in-memory test provider has no transactions or locks.
+            result = await CreateBatchCoreAsync(context, request, ct);
+        }
+        else
+        {
+            // Two browsers syncing overlapping folders at once both pass the duplicate pre-check,
+            // then deadlock or collide at the unique index - and the loser's WHOLE batch used to
+            // fail with a 500. One account's syncs therefore take turns: a transaction-scoped
+            // advisory lock keyed on the owner. Other accounts never touch the same unique index
+            // entries, so they still run in parallel. The execution strategy owns the transaction
+            // (required with Npgsql's retrying strategy) and reruns the whole unit on a transient
+            // failure, which is why the change tracker is cleared at the top.
+            var strategy = context.Database.CreateExecutionStrategy();
+            result = await strategy.ExecuteAsync(async () =>
+            {
+                context.ChangeTracker.Clear();
+                await using var transaction = await context.Database.BeginTransactionAsync(ct);
+                await context.Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock(hashtextextended({"batch:" + context.OwnerId}, 0))", ct);
+                var inner = await CreateBatchCoreAsync(context, request, ct);
+                await transaction.CommitAsync(ct);
+                return inner;
+            });
+        }
+
+        // After the commit, so the worker can never race rows it cannot see yet. Only what was
+        // actually created - a skipped duplicate has already been enriched or recorded as
+        // unenrichable. A 260-bookmark sync enqueues 260 ids and returns immediately; the worker
+        // drains them slowly in the background.
+        foreach (var item in result.Created)
+        {
+            faviconQueue.TryEnqueue(item.Id);
+        }
+
+        return result;
+    }
+
+    private static async Task<BatchResultDto> CreateBatchCoreAsync(
+        BookmarkDbContext context, BatchCreateRequest request, CancellationToken ct)
+    {
         var created = new List<BatchCreatedItem>();
         var skipped = new List<BatchSkippedItem>();
         var errors = new List<BatchErrorItem>();
 
         var items = request.Bookmarks ?? [];
-
-        await using var context = await contextFactory.CreateDbContextAsync(ct);
 
         // Pre-load URLs that already exist (ignoring the soft-delete filter, because the unique
         // index still covers soft-deleted rows) to detect duplicates in a single round-trip.
@@ -253,7 +305,7 @@ public class BookmarkService(
             .Select(i => i.Url?.Trim())
             .Where(u => !string.IsNullOrEmpty(u))
             .Select(u => u!)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Distinct(StringComparer.Ordinal)
             .ToList();
 
         var existingUrls = incomingUrls.Count == 0
@@ -263,8 +315,10 @@ public class BookmarkService(
                 .Select(b => b.Url)
                 .ToListAsync(ct);
 
-        var known = new HashSet<string>(existingUrls, StringComparer.OrdinalIgnoreCase);
-        var seenInBatch = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Ordinal, like the unique index and the single-create check: URL paths and queries are
+        // case-sensitive (youtube.com/watch?v=abcD and ?v=abcd are different videos).
+        var known = new HashSet<string>(existingUrls, StringComparer.Ordinal);
+        var seenInBatch = new HashSet<string>(StringComparer.Ordinal);
 
         var defaultTags = await ResolveTagsAsync(context, request.DefaultTags ?? [], ct);
 
@@ -290,9 +344,7 @@ public class BookmarkService(
                 continue;
             }
 
-            var dateAdded = item.DateAdded.HasValue
-                ? DateTime.UnixEpoch.AddMilliseconds(item.DateAdded.Value)
-                : DateTime.UtcNow;
+            var dateAdded = FromUnixMilliseconds(item.DateAdded) ?? DateTime.UtcNow;
 
             var bookmark = new Bookmark
             {
@@ -317,14 +369,6 @@ public class BookmarkService(
         if (created.Count > 0)
         {
             await context.SaveChangesAsync(ct);
-
-            // Only what was actually created — a skipped duplicate already exists and has either
-            // been enriched or recorded as unenrichable. A 260-bookmark sync enqueues 260 ids and
-            // returns immediately; the worker drains them slowly in the background.
-            foreach (var item in created)
-            {
-                faviconQueue.TryEnqueue(item.Id);
-            }
         }
 
         var summary = new BatchSummary(items.Count, created.Count, skipped.Count, errors.Count);
@@ -332,6 +376,21 @@ public class BookmarkService(
     }
 
     // ----- helpers -----
+
+    /// <summary>
+    /// A browser's "date added", or null when it is absent or not a plausible timestamp. One
+    /// corrupt value (microseconds, say, which overflows DateTime) used to throw and fail the whole
+    /// sync; such a bookmark is now simply dated "now", like one without a date.
+    /// </summary>
+    internal static DateTime? FromUnixMilliseconds(long? milliseconds)
+    {
+        // 1990-01-01 .. 2100-01-01: wider than any real bookmark, far inside DateTime's range.
+        const long earliest = 631_152_000_000;
+        const long latest = 4_102_444_800_000;
+        return milliseconds is >= earliest and <= latest
+            ? DateTime.UnixEpoch.AddMilliseconds(milliseconds.Value)
+            : null;
+    }
 
     private static IQueryable<Bookmark> LoadWithGraph(IQueryable<Bookmark> source) =>
         source

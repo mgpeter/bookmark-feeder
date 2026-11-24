@@ -41,6 +41,76 @@ public class PostgresApiTests(PostgresApiFactory factory) : IClassFixture<Postgr
     }
 
     [Fact]
+    public async Task ConcurrentOverlappingBatches_AllSucceed_AndStoreEachUrlOnce()
+    {
+        // Two browsers syncing the same folders at once. Whoever loses the race at the unique
+        // index used to get a 500 and lose its whole batch.
+        var client = factory.CreateAuthenticatedClient();
+        var run = Guid.NewGuid().ToString("N");
+        var items = Enumerable.Range(0, 40)
+            .Select(i => new BatchBookmarkItem($"https://race-{run}-{i}.example.com", $"R{i}", null, null, null))
+            .ToList();
+        var batch = new BatchCreateRequest(items, DefaultTags: [$"race{run}"], SkipDuplicates: true);
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 4)
+            .Select(_ => client.PostAsJsonAsync("/api/bookmarks/batch", batch)));
+
+        responses.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.OK);
+        var results = await Task.WhenAll(responses.Select(r => r.Content.ReadFromJsonAsync<BatchResultDto>()));
+        results.Sum(r => r!.Summary.Created).Should().Be(40, "each URL is stored exactly once");
+        results.Should().OnlyContain(r => r!.Summary.Created + r.Summary.Skipped == 40);
+    }
+
+    [Fact]
+    public async Task ConcurrentCreates_IntroducingTheSameNewTag_AllSucceed()
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var tag = $"new{Guid.NewGuid():N}";
+
+        var responses = await Task.WhenAll(Enumerable.Range(0, 4).Select(i =>
+            client.PostAsJsonAsync("/api/bookmarks", new CreateBookmarkRequest(
+                $"https://tagrace-{Guid.NewGuid():N}-{i}.example.com", "T", null, null, null, null, [tag]))));
+
+        responses.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.Created);
+        var tags = await client.GetFromJsonAsync<List<TagDto>>("/api/tags");
+        tags!.Where(t => t.Name == tag).Should().ContainSingle().Which.BookmarkCount.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Batch_TreatsUrlsDifferingOnlyInCase_AsDifferentBookmarks()
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var id = Guid.NewGuid().ToString("N")[..8];
+        var batch = new BatchCreateRequest(
+        [
+            new BatchBookmarkItem($"https://video.example.com/watch?v=ab{id}D", "Upper", null, null, null),
+            new BatchBookmarkItem($"https://video.example.com/watch?v=ab{id}d", "Lower", null, null, null),
+        ], SkipDuplicates: true);
+
+        var result = await (await client.PostAsJsonAsync("/api/bookmarks/batch", batch))
+            .Content.ReadFromJsonAsync<BatchResultDto>();
+
+        result!.Summary.Created.Should().Be(2);
+    }
+
+    [Theory]
+    [InlineData(1_700_000_000_000_000L)] // microseconds, not milliseconds
+    [InlineData(-62_200_000_000_000L)]
+    [InlineData(long.MaxValue)]
+    public async Task Batch_WithAnImpossibleDateAdded_StillStoresTheBookmark(long dateAdded)
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var url = $"https://date-{Guid.NewGuid():N}.example.com";
+        var batch = new BatchCreateRequest(
+            [new BatchBookmarkItem(url, "Odd date", null, null, dateAdded)], SkipDuplicates: true);
+
+        var response = await client.PostAsJsonAsync("/api/bookmarks/batch", batch);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await response.Content.ReadFromJsonAsync<BatchResultDto>())!.Summary.Created.Should().Be(1);
+    }
+
+    [Fact]
     public async Task DeletingTag_CascadesJoinRows_ButKeepsBookmark()
     {
         var client = factory.CreateAuthenticatedClient();

@@ -26,6 +26,9 @@ public class BookmarkDbContext : DbContext
         _ownerId = currentUser.UserId;
     }
 
+    /// <summary>The account this context is scoped to.</summary>
+    public Guid OwnerId => _ownerId;
+
     public DbSet<Bookmark> Bookmarks { get; set; }
     public DbSet<Tag> Tags { get; set; }
     public DbSet<Category> Categories { get; set; }

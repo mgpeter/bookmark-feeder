@@ -54,7 +54,15 @@ public class TagService(IDbContextFactory<BookmarkDbContext> contextFactory) : I
         };
 
         context.Tags.Add(tag);
-        await context.SaveChangesAsync(ct);
+        try
+        {
+            await context.SaveChangesAsync(ct);
+        }
+        catch (Exception ex) when (UniqueViolation.Is(ex))
+        {
+            // Another request created the same name between the check above and this save.
+            return (null, TagError.Duplicate);
+        }
 
         return (new TagDto(tag.Id, tag.Name, tag.NormalizedName, tag.Color, tag.DateCreated, 0), TagError.None);
     }
