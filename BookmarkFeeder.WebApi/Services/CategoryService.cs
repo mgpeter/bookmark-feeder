@@ -146,8 +146,19 @@ public class CategoryService(IDbContextFactory<BookmarkDbContext> contextFactory
         }
 
         // Promote children to the reassign target, or up to the deleted node's parent.
+        // (target == id was rejected above, so a "cycle" here means the target is a descendant.)
+        if (reassignTo is { } targetId && await WouldCreateCycleAsync(context, id, targetId, ct))
+        {
+            // The target sits inside the deleted subtree. Re-parenting the children to it as-is
+            // makes a cycle (the target becomes its own parent, or B<->C), and GetTreeAsync, which
+            // walks down from the roots, then silently drops that whole branch. So the target
+            // first takes the deleted node's place.
+            var targetCategory = await context.Categories.FirstAsync(c => c.Id == targetId, ct);
+            targetCategory.ParentCategoryId = category.ParentCategoryId;
+        }
+
         var newParent = reassignTo ?? category.ParentCategoryId;
-        foreach (var child in category.SubCategories)
+        foreach (var child in category.SubCategories.Where(c => c.Id != reassignTo))
         {
             child.ParentCategoryId = newParent;
         }

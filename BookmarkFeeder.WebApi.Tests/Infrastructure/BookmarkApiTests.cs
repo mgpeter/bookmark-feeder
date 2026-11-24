@@ -186,4 +186,32 @@ public class BookmarkApiTests(BookmarkApiFactory factory) : IClassFixture<Bookma
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+
+    private static IEnumerable<CategoryDto> Flatten(IEnumerable<CategoryDto> nodes) =>
+        nodes.SelectMany(n => new[] { n }.Concat(Flatten(n.Children)));
+
+    [Theory]
+    [InlineData("child")]
+    [InlineData("grandchild")]
+    public async Task DeletingACategory_ReassignedToItsOwnDescendant_KeepsTheTreeIntact(string target)
+    {
+        // A > B > C. Reassigning A's contents to B or C used to re-parent B onto the target:
+        // B became its own parent, or B and C each other's, and the branch vanished from the tree.
+        using var isolated = new BookmarkApiFactory();
+        var client = isolated.CreateAuthenticatedClient();
+        async Task<CategoryDto> Create(string name, Guid? parent) =>
+            (await (await client.PostAsJsonAsync("/api/categories", new CreateCategoryRequest(name, null, parent)))
+                .Content.ReadFromJsonAsync<CategoryDto>())!;
+        var a = await Create("A", null);
+        var b = await Create("B", a.Id);
+        var c = await Create("C", b.Id);
+        var targetId = target == "child" ? b.Id : c.Id;
+
+        (await client.DeleteAsync($"/api/categories/{a.Id}?reassignTo={targetId}"))
+            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        var tree = Flatten((await client.GetFromJsonAsync<List<CategoryDto>>("/api/categories"))!).ToList();
+        tree.Select(n => n.Name).Should().BeEquivalentTo(["B", "C"], "nothing may drop out of the tree");
+        tree.Single(n => n.Id == targetId).ParentCategoryId.Should().BeNull("the target takes A's place");
+    }
 }
