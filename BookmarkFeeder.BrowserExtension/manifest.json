@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BookmarkFeeder",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A self-hosted bookmark management extension that syncs selected bookmark folders to your personal BookmarkFeeder instance.",
   "permissions": [
     "bookmarks",
