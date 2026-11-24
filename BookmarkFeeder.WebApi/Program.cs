@@ -69,6 +69,7 @@ builder.Services.AddScoped<ISavedSearchService, SavedSearchService>();
 // network, and self-hosters can disable the outbound fetching entirely.
 builder.Services.AddSingleton<IFaviconQueue>(_ => new FaviconQueue());
 builder.Services.AddScoped<IFaviconResolver, FaviconResolver>();
+#pragma warning disable EXTEXP0001 // RemoveAllResilienceHandlers, below
 builder.Services.AddHttpClient(FaviconResolver.HttpClientName, client =>
 {
     // Short: a slow site must not occupy a worker slot for long.
@@ -78,7 +79,17 @@ builder.Services.AddHttpClient(FaviconResolver.HttpClientName, client =>
         "Mozilla/5.0 (compatible; BookmarkFeeder/1.0; +https://github.com/bookmarkfeeder)");
     // A favicon is small; refuse to buffer a page that isn't.
     client.MaxResponseContentBufferSize = 2 * 1024 * 1024;
-});
+})
+// Bookmark URLs are user input: only public addresses may be connected to (see the guard).
+.ConfigurePrimaryHttpMessageHandler(() =>
+    FaviconNetworkGuard.CreateHandler(builder.Configuration.GetValue("Favicon:AllowPrivateNetworks", false)))
+// ServiceDefaults adds a standard resilience handler to every client. Here it is wrong twice over:
+// one circuit breaker shared by every site means a burst of dead domains opens it and healthy
+// sites then fail (and get stamped as having no favicon), and retries multiply requests to
+// servers that are not ours. EXTEXP0001: the API is marked experimental but is the documented way
+// to opt one client out of ConfigureHttpClientDefaults.
+.RemoveAllResilienceHandlers();
+#pragma warning restore EXTEXP0001
 
 if (builder.Configuration.GetValue("Favicon:Enabled", true))
 {

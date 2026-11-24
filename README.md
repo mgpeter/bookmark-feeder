@@ -20,7 +20,9 @@ own NAS. Nothing leaves your network.
 - **Organise** - tags, a category tree, read/unread, an edit dialog, and "mark all as read" across
   every match rather than just the page you're looking at.
 - **Favicons** - a background worker discovers each site's icon from **its own origin** (never a
-  third-party favicon service) and records failures so it never re-asks.
+  third-party favicon service) and records failures so it never re-asks. It only ever connects to
+  public addresses, so a bookmark cannot point it at your LAN or the app's own containers
+  (`Favicon__AllowPrivateNetworks=true` opts in, if you want icons for LAN bookmarks).
 - **Accounts** - sign in with Auth0 (OIDC, Authorization Code + PKCE). Every account gets its own
   isolated collection; nothing is shared between them. Signup is open by default.
 - **Scoped API keys for the extension** - mint one key per browser in Settings, shown once and
