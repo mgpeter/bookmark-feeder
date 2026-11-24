@@ -136,6 +136,7 @@ var apiService = builder.AddProject<Projects.BookmarkFeeder_WebApi>("webapi")
         // Optional, so a plain compose variable rather than a parameter (which would be required):
         // who may claim the pre-multi-user collection. Unset leaves it unclaimed.
         service.Environment["Auth0__LegacyOwner"] = "${AUTH0_LEGACY_OWNER:-}";
+        service.Healthcheck = DotnetAliveCheck();
     });
 
 // React (Vite) web frontend. Standalone npm app; Aspire runs `npm run dev` and injects PORT.
@@ -150,7 +151,19 @@ var web = builder.AddViteApp("web", "../BookmarkFeeder.Web")
     .WithEnvironment("VITE_AUTH0_CLIENT_ID", auth0ClientId)
     .WithEnvironment("VITE_AUTH0_AUDIENCE", auth0Audience)
     .PublishAsDockerFile()
-    .PublishAsDockerComposeService((_, service) => service.Restart = "unless-stopped");
+    .PublishAsDockerComposeService((_, service) =>
+    {
+        service.Restart = "unless-stopped";
+        // nginx:alpine has BusyBox wget; a 200 for "/" means nginx is up and config.js written.
+        service.Healthcheck = new Healthcheck
+        {
+            Test = ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8000/ > /dev/null || exit 1"],
+            Interval = "30s",
+            Timeout = "5s",
+            Retries = 3,
+            StartPeriod = "10s",
+        };
+    });
 
 // YARP gateway: the single external entry point. Routes /api -> webapi and / -> web
 // via service discovery (destinations "http://webapi" / "http://web").
@@ -177,6 +190,31 @@ builder.AddProject<Projects.BookmarkFeeder_Gateway>("gateway")
         // this one over the network.
         service.Ports.Clear();
         service.Ports.Add("${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT}:${GATEWAY_PORT}");
+
+        // Start routing only once both upstreams answer: "service_started" merely means the
+        // containers exist, so the gateway used to serve 502s while webapi ran its migrations.
+        service.DependsOn["webapi"] = new ServiceDependency { Condition = "service_healthy" };
+        service.DependsOn["web"] = new ServiceDependency { Condition = "service_healthy" };
+        service.Healthcheck = DotnetAliveCheck();
     });
+
+// The .NET images (Ubuntu, from SDK container publish) ship bash but neither curl nor wget, so the
+// probe speaks HTTP over bash's /dev/tcp to /alive (ServiceDefaults' liveness endpoint) on the port
+// the container listens on. $$ escapes compose interpolation: HTTP_PORTS is read inside the
+// container, not from the .env.
+static Healthcheck DotnetAliveCheck() => new()
+{
+    Test =
+    [
+        "CMD",
+        "bash",
+        "-c",
+        "exec 3<>/dev/tcp/127.0.0.1/$${HTTP_PORTS} && printf 'GET /alive HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q ' 200 '",
+    ],
+    Interval = "30s",
+    Timeout = "5s",
+    Retries = 3,
+    StartPeriod = "60s",
+};
 
 builder.Build().Run();
