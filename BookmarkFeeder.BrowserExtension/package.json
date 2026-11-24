@@ -2,7 +2,7 @@
   "name": "bookmarkfeeder-extension",
   "private": true,
   "version": "1.0.0",
-  "description": "Chrome/Edge extension for BookmarkFeeder",
+  "description": "Chrome/Edge/Safari extension for BookmarkFeeder",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "zip": "npm run build && node scripts/zip.mjs"
+    "zip": "npm run build && node scripts/zip.mjs",
+    "safari:build": "tsc -b && vite build --mode safari && DEVELOPER_DIR=${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer} xcodebuild -project safari/BookmarkFeeder/BookmarkFeeder.xcodeproj -scheme BookmarkFeeder -configuration Debug -derivedDataPath safari/build build -quiet",
+    "safari:open": "open safari/build/Build/Products/Debug/BookmarkFeeder.app"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.2.9",

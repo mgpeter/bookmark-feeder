@@ -9,6 +9,7 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-safari
 dist-ssr
 *.local
 
@@ -25,3 +26,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Safari wrapper (Xcode) build output and per-user state
+safari/build/
+xcuserdata/
+DerivedData/

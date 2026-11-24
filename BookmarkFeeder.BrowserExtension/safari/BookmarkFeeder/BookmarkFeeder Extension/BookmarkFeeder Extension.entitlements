@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Safari has no bookmarks API for extensions, so the handler reads Safari's bookmarks file.
+	     Read-only, that one file. macOS additionally requires Full Disk Access for ~/Library/Safari.
+	     Temporary exceptions are not accepted by the Mac App Store; fine for local builds. -->
+	<key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
+	<array>
+		<string>/Library/Safari/Bookmarks.plist</string>
+	</array>
+</dict>
+</plist>
