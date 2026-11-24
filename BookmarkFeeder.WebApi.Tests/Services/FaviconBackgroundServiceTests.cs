@@ -65,7 +65,8 @@ public class FaviconBackgroundServiceTests
         return new Harness { Provider = provider, Queue = queue, Resolver = resolver, Worker = worker };
     }
 
-    private static async Task<Guid> AddBookmark(Harness harness, string url, bool isDeleted = false)
+    private static async Task<Guid> AddBookmark(
+        Harness harness, string url, bool isDeleted = false, string? faviconUrl = null)
     {
         await using var db = await harness.Db.CreateDbContextAsync();
         var bookmark = new Bookmark
@@ -76,6 +77,7 @@ public class FaviconBackgroundServiceTests
             DateAdded = DateTime.UtcNow,
             DateModified = DateTime.UtcNow,
             IsDeleted = isDeleted,
+            FaviconUrl = faviconUrl,
         };
         db.Bookmarks.Add(bookmark);
         await db.SaveChangesAsync();
@@ -115,6 +117,22 @@ public class FaviconBackgroundServiceTests
         var bookmark = await Reload(harness, id);
         bookmark!.FaviconUrl.Should().Be("https://site.example/favicon.ico");
         bookmark.FaviconFetchedAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AFaviconTheUserSupplied_IsKept_AndNotFetched()
+    {
+        await using var harness = Build();
+        harness.Resolver.Behaviour = _ => "https://site.example/discovered.ico";
+        var id = await AddBookmark(harness, "https://site.example/page", faviconUrl: "https://site.example/mine.png");
+
+        await harness.Worker.StartAsync(CancellationToken.None);
+        harness.Queue.TryEnqueue(id);
+
+        (await Eventually(async () => (await Reload(harness, id))?.FaviconFetchedAt is not null))
+            .Should().BeTrue();
+        (await Reload(harness, id))!.FaviconUrl.Should().Be("https://site.example/mine.png");
+        harness.Resolver.Seen.Should().BeEmpty("there is nothing to discover");
     }
 
     [Fact]

@@ -108,6 +108,15 @@ public class FaviconBackgroundService(
                 .FirstOrDefaultAsync(b => b.Id == bookmarkId, ct);
             if (bookmark is null) return;
 
+            // The user (or an earlier run) already set one: keep it rather than overwrite a
+            // deliberate choice with whatever discovery finds, and skip the outbound requests.
+            if (!string.IsNullOrEmpty(bookmark.FaviconUrl))
+            {
+                bookmark.FaviconFetchedAt = DateTime.UtcNow;
+                await context.SaveChangesAsync(ct);
+                return;
+            }
+
             string? favicon = null;
             try
             {
@@ -122,7 +131,7 @@ public class FaviconBackgroundService(
 
             // Stamp either way. On failure FaviconUrl stays null, and the stamp is what stops
             // the backfill retrying this site on every startup.
-            bookmark.FaviconUrl = favicon ?? bookmark.FaviconUrl;
+            bookmark.FaviconUrl = favicon;
             bookmark.FaviconFetchedAt = DateTime.UtcNow;
             await context.SaveChangesAsync(ct);
 
