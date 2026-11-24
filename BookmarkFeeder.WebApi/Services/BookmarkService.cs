@@ -192,10 +192,14 @@ public class BookmarkService(
         }
 
         if (request.Title is not null) bookmark.Title = request.Title.Trim();
-        if (request.Description is not null) bookmark.Description = request.Description;
+        if (request.Description is not null)
+        {
+            bookmark.Description = request.Description.Length == 0 ? null : request.Description;
+        }
         if (request.FaviconUrl is not null) bookmark.FaviconUrl = request.FaviconUrl;
         if (request.IsRead.HasValue) bookmark.IsRead = request.IsRead.Value;
-        if (request.CategoryId.HasValue) bookmark.CategoryId = request.CategoryId;
+        if (request.ClearCategory == true) bookmark.CategoryId = null;
+        else if (request.CategoryId.HasValue) bookmark.CategoryId = request.CategoryId;
 
         if (request.Tags is not null)
         {

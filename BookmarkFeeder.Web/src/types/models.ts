@@ -113,12 +113,16 @@ export interface CreateBookmarkRequest {
   tags?: string[]
 }
 
+/** Partial update: omitted or null fields are left unchanged. */
 export interface UpdateBookmarkRequest {
   title?: string
+  /** An empty string clears the description. */
   description?: string | null
   faviconUrl?: string | null
   isRead?: boolean
   categoryId?: string | null
+  /** True removes the category (categoryId must then be omitted). */
+  clearCategory?: boolean
   tags?: string[]
 }
 

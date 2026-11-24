@@ -25,6 +25,9 @@ public class UpdateBookmarkRequestValidator : AbstractValidator<UpdateBookmarkRe
         RuleFor(x => x.Title).MaximumLength(500).When(x => x.Title is not null);
         RuleFor(x => x.Description).MaximumLength(2000);
         RuleFor(x => x.FaviconUrl).MaximumLength(2048);
+        RuleFor(x => x.CategoryId).Null()
+            .When(x => x.ClearCategory == true)
+            .WithMessage("Send either categoryId or clearCategory, not both.");
     }
 }
 

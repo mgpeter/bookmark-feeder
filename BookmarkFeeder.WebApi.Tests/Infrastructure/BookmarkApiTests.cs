@@ -141,4 +141,49 @@ public class BookmarkApiTests(BookmarkApiFactory factory) : IClassFixture<Bookma
         parentNode.Children.Should().ContainSingle();
         parentNode.Children.Single().Level.Should().Be(1);
     }
+
+    [Fact]
+    public async Task Update_CanClearTheCategoryAndDescription()
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var category = await (await client.PostAsJsonAsync("/api/categories",
+            new CreateCategoryRequest($"Clear-{Guid.NewGuid():N}", null, null))).Content.ReadFromJsonAsync<CategoryDto>();
+        var created = await (await client.PostAsJsonAsync("/api/bookmarks", new CreateBookmarkRequest(
+            $"https://clear-{Guid.NewGuid():N}.example.com", "Clear me", "Some notes", null, null, category!.Id, null)))
+            .Content.ReadFromJsonAsync<BookmarkDto>();
+
+        var response = await client.PutAsJsonAsync($"/api/bookmarks/{created!.Id}",
+            new UpdateBookmarkRequest("Clear me", "", null, null, null, null, ClearCategory: true));
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var updated = await response.Content.ReadFromJsonAsync<BookmarkDto>();
+        updated!.Description.Should().BeNull();
+        updated.Categories.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Update_WithNullFields_LeavesThemUnchanged()
+    {
+        var client = factory.CreateAuthenticatedClient();
+        var created = await (await client.PostAsJsonAsync("/api/bookmarks", new CreateBookmarkRequest(
+            $"https://keep-{Guid.NewGuid():N}.example.com", "Keep", "Keep these notes", null, null, null, null)))
+            .Content.ReadFromJsonAsync<BookmarkDto>();
+
+        var updated = await (await client.PutAsJsonAsync($"/api/bookmarks/{created!.Id}",
+            new UpdateBookmarkRequest("Renamed", null, null, null, null, null)))
+            .Content.ReadFromJsonAsync<BookmarkDto>();
+
+        updated!.Description.Should().Be("Keep these notes");
+    }
+
+    [Fact]
+    public async Task Update_WithBothCategoryAndClearCategory_IsRejected()
+    {
+        var client = factory.CreateAuthenticatedClient();
+
+        var response = await client.PutAsJsonAsync($"/api/bookmarks/{Guid.NewGuid()}",
+            new UpdateBookmarkRequest(null, null, null, null, Guid.NewGuid(), null, ClearCategory: true));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

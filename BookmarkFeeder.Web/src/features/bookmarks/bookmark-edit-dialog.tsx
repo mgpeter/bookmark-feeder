@@ -99,10 +99,18 @@ export function BookmarkEditDialog({ target, onClose }: Props) {
     const description = values.description || null
 
     if (editing) {
+      // The API leaves null fields unchanged, so "remove" has to be said explicitly: an empty
+      // description, and clearCategory rather than a null category.
       update.mutate(
         {
           id: editing.id,
-          body: { title: values.title, description, categoryId, isRead: values.isRead, tags },
+          body: {
+            title: values.title,
+            description: values.description ?? '',
+            ...(categoryId === null ? { clearCategory: true } : { categoryId }),
+            isRead: values.isRead,
+            tags,
+          },
         },
         {
           onSuccess: () => {

@@ -50,13 +50,19 @@ public record CreateBookmarkRequest(
     Guid? CategoryId,
     string[]? Tags);
 
+/// <summary>
+/// Partial update: a null field is left unchanged. To clear instead, send an empty
+/// <paramref name="Description"/>, or <paramref name="ClearCategory"/> = true (null CategoryId
+/// cannot mean "none" without breaking clients that omit it).
+/// </summary>
 public record UpdateBookmarkRequest(
     string? Title,
     string? Description,
     string? FaviconUrl,
     bool? IsRead,
     Guid? CategoryId,
-    string[]? Tags);
+    string[]? Tags,
+    bool? ClearCategory = null);
 
 public record MarkReadRequest(bool IsRead);
 
