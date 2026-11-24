@@ -1,6 +1,6 @@
 # BookmarkFeeder Browser Extension
 
-Chrome/Edge extension that syncs selected bookmark folders to your self-hosted BookmarkFeeder.
+Chrome/Edge/Safari extension that syncs selected bookmark folders to your self-hosted BookmarkFeeder.
 
 It is deliberately **sync-only** - it does not browse your collection. That's the web app's job, and
 there's a button to open it.
@@ -34,6 +34,56 @@ Then in Chrome (`chrome://extensions`) or Edge (`edge://extensions`):
 
 After any code change, `npm run build` again and hit **reload** on the extension card. The popup runs
 the built bundle, so it will not change until you do.
+
+## Safari
+
+Safari runs the same popup code, wrapped in a small macOS container app (Safari only loads
+extensions that ship inside an app). The Xcode project in `safari/` was generated once with Apple's
+`safari-web-extension-packager` and **references** the `dist-safari/` build rather than copying it,
+so a fresh build is all it needs - never regenerate it for a code change.
+
+**Safari has no bookmarks API for extensions** (still true in Safari 27 - the popup's
+`chrome.bookmarks` is simply missing). So the Safari build reads bookmarks natively: the popup sends
+`{ type: "getTree" }` over `runtime.sendNativeMessage`, and the extension's Swift handler
+(`safari/BookmarkFeeder/BookmarkFeeder Extension/SafariBookmarks.swift`) parses
+`~/Library/Safari/Bookmarks.plist` and replies with a `chrome.bookmarks`-shaped tree. Everything
+after that - folder picking, `sourceFolder` paths, the upload - is the shared code. Folder ids are
+Safari's bookmark UUIDs, so the selection survives restarts. Safari bookmarks carry no "date added"
+(only Reading List items do), so those are uploaded without one.
+
+`vite build --mode safari` writes `dist-safari/` with a derived manifest: `nativeMessaging` added,
+`bookmarks` dropped. The Chrome/Edge `dist/` is unchanged and never asks for native messaging.
+
+**Prerequisites:** Xcode (full Xcode, not just the Command Line Tools), with its license accepted
+(`sudo xcodebuild -license accept`). The scripts use `/Applications/Xcode.app` even when
+`xcode-select` points at the Command Line Tools; set `DEVELOPER_DIR` to use another Xcode.
+
+```bash
+npm run safari:build   # tsc + vite --mode safari -> dist-safari/, then xcodebuild -> safari/build/
+npm run safari:open    # launches the app once, which registers the extension with Safari
+```
+
+The build is unsigned (signed to run locally only), so Safari must be told to accept it:
+
+1. Safari → **Settings → Advanced** → tick **Show features for web developers**
+2. Safari → **Settings → Developer** → tick **Allow unsigned extensions**. Safari forgets this
+   every time it quits, so repeat it after each restart
+3. Safari → **Settings → Extensions** → enable **BookmarkFeeder Extension**
+4. Grant it access to your server's site (**Edit Websites…** on the same page). Without that grant
+   Safari blocks the requests and **Test connection** reports the server as unreachable
+5. **Full Disk Access**, because `~/Library/Safari` is privacy-protected: System Settings →
+   **Privacy & Security → Full Disk Access** → **+** → choose `BookmarkFeeder.app` (in
+   `safari/build/Build/Products/Debug/`) and switch it on. The Folders tab explains this when the
+   grant is missing. The extension's sandbox still only allows reading that one file, read-only
+
+The ad-hoc signature changes on every build, and macOS ties the Full Disk Access grant to it - so
+after a rebuild, remove BookmarkFeeder from the list and add it again. Signing with a free Apple ID
+(Xcode → target → Signing & Capabilities → Team: your Personal Team) keeps the grant stable.
+
+After a code change: `npm run safari:build`, then toggle the extension off and on in Safari's
+settings. Settings live in Safari's own `storage.sync`, so configure it once like any other
+browser. Signing, notarisation and the App Store are not set up yet - and the App Store would not
+accept the read-only file exception the native handler relies on.
 
 ## Configure it
 
@@ -77,6 +127,7 @@ stores require.
 ```bash
 npm test               # vitest - chrome.* APIs are stubbed, no network
 npm run build          # tsc -b && vite build
+npm run safari:build   # build + Xcode wrapper (macOS, needs Xcode)
 ```
 
 Built with React 19 + Vite + Tailwind v4 + shadcn/ui (the same `radix-nova` theme and Geist font as
@@ -91,6 +142,7 @@ index.html, src/       # React popup
                        # planned service worker can import runSync() unchanged
   features/            # folder picker, settings, sync panel
 scripts/zip.mjs        # packaging
+safari/                # Xcode wrapper app for Safari: native bookmarks reader; references dist-safari/
 icons/                 # 16/48/128 + ai.png (1024px master)
 dist/                  # build output - this is what you load unpacked
 ```
