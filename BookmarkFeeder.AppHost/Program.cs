@@ -48,6 +48,12 @@ builder.AddDockerComposeEnvironment("compose")
                 ReadOnly = false,
             });
 
+            // Fail at `docker compose up` with a message, rather than letting Postgres initialise
+            // without a password (it refuses to start) or webapi try an empty one. Compose rejects
+            // the whole file when a ${VAR:?msg} is unset or empty.
+            postgresService.Environment["POSTGRES_PASSWORD"] =
+                "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.nas.template)}";
+
             // The named volume the bind mount above replaced; leaving the declaration behind would
             // have compose create a volume nothing mounts.
             file.Volumes.Remove("bookmarkfeeder-postgres-data");
